@@ -22,10 +22,10 @@ final class musicconectorUITestsLaunchTests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["MusicConector"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Songs"].waitForExistence(timeout: 5))
 
         let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = "MusicConector Foundation"
+        attachment.name = "MusicConector Design System"
         attachment.lifetime = .keepAlways
         add(attachment)
     }

@@ -18,8 +18,8 @@ final class musicconectorUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["MusicConector"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Ready for Apple Music"].exists)
+        XCTAssertTrue(app.staticTexts["Songs"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.searchFields["Search"].exists)
     }
 
     @MainActor
