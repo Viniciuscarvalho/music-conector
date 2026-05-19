@@ -8,7 +8,7 @@
 import Foundation
 import MusicKit
 
-enum MusicAuthorizationState: Equatable {
+enum MusicAuthorizationState: Equatable, Sendable {
     case notDetermined
     case authorized
     case denied
@@ -18,21 +18,32 @@ enum MusicAuthorizationState: Equatable {
 
 protocol MusicAuthorizationProviding {
     func currentStatus() async -> MusicAuthorizationState
+    func requestAuthorization() async -> MusicAuthorizationState
 }
 
 struct MusicKitAuthorizationProvider: MusicAuthorizationProviding {
     func currentStatus() async -> MusicAuthorizationState {
-        switch MusicAuthorization.currentStatus {
+        MusicAuthorizationState(status: MusicAuthorization.currentStatus)
+    }
+
+    func requestAuthorization() async -> MusicAuthorizationState {
+        MusicAuthorizationState(status: await MusicAuthorization.request())
+    }
+}
+
+private extension MusicAuthorizationState {
+    init(status: MusicAuthorization.Status) {
+        switch status {
         case .notDetermined:
-            return .notDetermined
+            self = .notDetermined
         case .authorized:
-            return .authorized
+            self = .authorized
         case .denied:
-            return .denied
+            self = .denied
         case .restricted:
-            return .restricted
+            self = .restricted
         @unknown default:
-            return .unknown
+            self = .unknown
         }
     }
 }
