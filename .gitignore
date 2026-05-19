@@ -4,6 +4,7 @@
 
 ## User settings
 xcuserdata/
+.DS_Store
 
 ## Obj-C/Swift specific
 *.hmap
@@ -30,6 +31,25 @@ playground.xcworkspace
 # .swiftpm
 
 .build/
+
+# Local agent and repository guidance
+.claude/
+.codex/
+codex-scaffold/
+AGENTS.md
+CLAUDE.md
+docs/codex/
+patterns/
+scripts/codex/
+AGENTS.local.md
+
+# Secrets and signing material
+.env
+.env.*
+*.p8
+*.mobileprovision
+*.cer
+*.p12
 
 # CocoaPods
 #
