@@ -27,17 +27,12 @@ final class HomeViewModel {
     private(set) var isLoadingNextPage = false
     private(set) var paginationErrorMessage: String?
 
-    private let catalogService: MusicCatalogServicing
-    private var recentSongsStore: RecentSongsStoring?
+    private let repository: any HomeSongRepository
     private var currentSearchTerm = ""
     private var nextPage: PageRequest?
 
-    init(
-        catalogService: MusicCatalogServicing = MusicKitCatalogService(),
-        recentSongsStore: RecentSongsStoring? = nil
-    ) {
-        self.catalogService = catalogService
-        self.recentSongsStore = recentSongsStore
+    init(repository: any HomeSongRepository) {
+        self.repository = repository
     }
 
     var isSearchActive: Bool {
@@ -48,19 +43,9 @@ final class HomeViewModel {
         isSearchActive ? searchResults : recentSongs
     }
 
-    func configureRecentSongsStore(_ store: RecentSongsStoring) {
-        recentSongsStore = store
-    }
-
     func loadRecentSongs(limit: Int = 10) async {
-        guard let recentSongsStore else {
-            recentSongs = []
-            state = .recents
-            return
-        }
-
         do {
-            recentSongs = try await recentSongsStore.recentlyPlayed(limit: limit)
+            recentSongs = try await repository.recentSongs(limit: limit)
             if !isSearchActive {
                 state = .recents
             }
@@ -87,7 +72,7 @@ final class HomeViewModel {
         state = .loading
 
         do {
-            let result = try await catalogService.searchSongs(term: term, page: page)
+            let result = try await repository.searchSongs(term: term, page: page)
             guard currentSearchTerm == term else { return }
 
             searchResults = result.items
@@ -126,7 +111,7 @@ final class HomeViewModel {
         defer { isLoadingNextPage = false }
 
         do {
-            let result = try await catalogService.searchSongs(term: currentSearchTerm, page: nextPage)
+            let result = try await repository.searchSongs(term: currentSearchTerm, page: nextPage)
             let existingIDs = Set(searchResults.map(\.id))
             let newSongs = result.items.filter { !existingIDs.contains($0.id) }
             searchResults.append(contentsOf: newSongs)

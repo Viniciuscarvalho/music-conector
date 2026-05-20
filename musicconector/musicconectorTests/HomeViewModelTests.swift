@@ -13,23 +13,22 @@ import Testing
 struct HomeViewModelTests {
 
     @Test func loadRecentSongsShowsCachedSongsWithoutCatalogSearch() async {
-        let catalogService = HomeCatalogServiceFake()
-        let recentSongsStore = HomeRecentSongsStoreFake(recentSongs: [
+        let repository = HomeRepositoryFake(recentSongs: [
             sampleHomeSong(id: "recent-1", title: "Purple Rain"),
             sampleHomeSong(id: "recent-2", title: "Get Lucky")
         ])
-        let viewModel = HomeViewModel(catalogService: catalogService, recentSongsStore: recentSongsStore)
+        let viewModel = HomeViewModel(repository: repository)
 
         await viewModel.loadRecentSongs()
 
         #expect(viewModel.state == .recents)
         #expect(viewModel.songs.map(\.id) == ["recent-1", "recent-2"])
-        #expect(catalogService.searchRequests.isEmpty)
+        #expect(repository.searchRequests.isEmpty)
     }
 
     @Test func searchReturnsMatchingSongsFromCatalog() async {
-        let catalogService = HomeCatalogServiceFake()
-        catalogService.pages[0] = PagedResult(
+        let repository = HomeRepositoryFake()
+        repository.pages[0] = PagedResult(
             items: [
                 sampleHomeSong(id: "song-1", title: "Get Lucky"),
                 sampleHomeSong(id: "song-2", title: "Around the World")
@@ -37,23 +36,23 @@ struct HomeViewModelTests {
             page: PageRequest(limit: 25, offset: 0),
             nextPage: nil
         )
-        let viewModel = HomeViewModel(catalogService: catalogService)
+        let viewModel = HomeViewModel(repository: repository)
 
         await viewModel.search(term: " daft punk ")
 
         #expect(viewModel.state == .results)
         #expect(viewModel.searchResults.map(\.id) == ["song-1", "song-2"])
-        #expect(catalogService.searchRequests.map(\.term) == ["daft punk"])
+        #expect(repository.searchRequests.map(\.term) == ["daft punk"])
     }
 
     @Test func searchEmptyResultShowsEmptyState() async {
-        let catalogService = HomeCatalogServiceFake()
-        catalogService.pages[0] = PagedResult(
+        let repository = HomeRepositoryFake()
+        repository.pages[0] = PagedResult(
             items: [],
             page: PageRequest(limit: 25, offset: 0),
             nextPage: nil
         )
-        let viewModel = HomeViewModel(catalogService: catalogService)
+        let viewModel = HomeViewModel(repository: repository)
 
         await viewModel.search(term: "unknown song")
 
@@ -62,10 +61,10 @@ struct HomeViewModelTests {
     }
 
     @Test func scrollingNearBottomRequestsNextPageOnce() async {
-        let catalogService = HomeCatalogServiceFake()
+        let repository = HomeRepositoryFake()
         let firstPage = PageRequest(limit: 25, offset: 0)
         let secondPage = firstPage.next
-        catalogService.pages[0] = PagedResult(
+        repository.pages[0] = PagedResult(
             items: [
                 sampleHomeSong(id: "song-1"),
                 sampleHomeSong(id: "song-2"),
@@ -74,7 +73,7 @@ struct HomeViewModelTests {
             page: firstPage,
             nextPage: secondPage
         )
-        catalogService.pages[25] = PagedResult(
+        repository.pages[25] = PagedResult(
             items: [
                 sampleHomeSong(id: "song-4"),
                 sampleHomeSong(id: "song-5")
@@ -82,20 +81,20 @@ struct HomeViewModelTests {
             page: secondPage,
             nextPage: nil
         )
-        let viewModel = HomeViewModel(catalogService: catalogService)
+        let viewModel = HomeViewModel(repository: repository)
 
         await viewModel.search(term: "prince")
         await viewModel.loadNextPageIfNeeded(currentSongID: "song-3")
         await viewModel.loadNextPageIfNeeded(currentSongID: "song-5")
 
         #expect(viewModel.searchResults.map(\.id) == ["song-1", "song-2", "song-3", "song-4", "song-5"])
-        #expect(catalogService.searchRequests.map(\.page.offset) == [0, 25])
+        #expect(repository.searchRequests.map(\.page.offset) == [0, 25])
     }
 
     @Test func scrollingAwayFromBottomDoesNotRequestNextPage() async {
-        let catalogService = HomeCatalogServiceFake()
+        let repository = HomeRepositoryFake()
         let firstPage = PageRequest(limit: 25, offset: 0)
-        catalogService.pages[0] = PagedResult(
+        repository.pages[0] = PagedResult(
             items: [
                 sampleHomeSong(id: "song-1"),
                 sampleHomeSong(id: "song-2"),
@@ -106,18 +105,18 @@ struct HomeViewModelTests {
             page: firstPage,
             nextPage: firstPage.next
         )
-        let viewModel = HomeViewModel(catalogService: catalogService)
+        let viewModel = HomeViewModel(repository: repository)
 
         await viewModel.search(term: "madonna")
         await viewModel.loadNextPageIfNeeded(currentSongID: "song-1")
 
-        #expect(catalogService.searchRequests.map(\.page.offset) == [0])
+        #expect(repository.searchRequests.map(\.page.offset) == [0])
     }
 
     @Test func failedSearchShowsErrorState() async {
-        let catalogService = HomeCatalogServiceFake()
-        catalogService.error = MusicCatalogError.songNotFound("missing")
-        let viewModel = HomeViewModel(catalogService: catalogService)
+        let repository = HomeRepositoryFake()
+        repository.searchError = MusicCatalogError.songNotFound("missing")
+        let viewModel = HomeViewModel(repository: repository)
 
         await viewModel.search(term: "missing")
 
@@ -126,10 +125,7 @@ struct HomeViewModelTests {
     }
 
     @Test func recentStoreFailureShowsOfflineState() async {
-        let viewModel = HomeViewModel(
-            catalogService: HomeCatalogServiceFake(),
-            recentSongsStore: HomeRecentSongsStoreFake(error: MusicCatalogError.emptySearchTerm)
-        )
+        let viewModel = HomeViewModel(repository: HomeRepositoryFake(recentSongsError: MusicCatalogError.emptySearchTerm))
 
         await viewModel.loadRecentSongs()
 
@@ -139,61 +135,39 @@ struct HomeViewModelTests {
 }
 
 @MainActor
-private final class HomeCatalogServiceFake: MusicCatalogServicing {
+private final class HomeRepositoryFake: HomeSongRepository {
     struct SearchRequest {
         let term: String
         let page: PageRequest
     }
 
+    var recentSongs: [Song]
+    var recentSongsError: Error?
     var pages: [Int: PagedResult<Song>] = [:]
-    var error: Error?
+    var searchError: Error?
     private(set) var searchRequests: [SearchRequest] = []
 
-    func searchSongs(term: String, page: PageRequest) async throws -> PagedResult<Song> {
-        searchRequests.append(SearchRequest(term: term, page: page))
-
-        if let error {
-            throw error
-        }
-
-        return pages[page.offset] ?? PagedResult(items: [], page: page, nextPage: nil)
-    }
-
-    func song(id: Song.ID) async throws -> Song {
-        sampleHomeSong(id: id)
-    }
-}
-
-@MainActor
-private final class HomeRecentSongsStoreFake: RecentSongsStoring {
-    var recentSongs: [Song]
-    var error: Error?
-
-    init(recentSongs: [Song] = [], error: Error? = nil) {
+    init(recentSongs: [Song] = [], recentSongsError: Error? = nil) {
         self.recentSongs = recentSongs
-        self.error = error
+        self.recentSongsError = recentSongsError
     }
 
-    func saveRecentlyPlayed(_ song: Song, playedAt: Date) async throws {}
-
-    func saveViewedSong(_ song: Song, viewedAt: Date) async throws {}
-
-    func saveViewedAlbum(_ album: Album, viewedAt: Date) async throws {}
-
-    func recentlyPlayed(limit: Int) async throws -> [Song] {
-        if let error {
+    func recentSongs(limit: Int) async throws -> [Song] {
+        if let error = recentSongsError {
             throw error
         }
 
         return Array(recentSongs.prefix(limit))
     }
 
-    func cachedSong(id: Song.ID) async throws -> Song? {
-        recentSongs.first { $0.id == id }
-    }
+    func searchSongs(term: String, page: PageRequest) async throws -> PagedResult<Song> {
+        searchRequests.append(SearchRequest(term: term, page: page))
 
-    func cachedAlbum(id: Album.ID) async throws -> Album? {
-        nil
+        if let searchError {
+            throw searchError
+        }
+
+        return pages[page.offset] ?? PagedResult(items: [], page: page, nextPage: nil)
     }
 }
 
