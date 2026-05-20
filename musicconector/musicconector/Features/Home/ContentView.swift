@@ -9,153 +9,58 @@ import SwiftData
 import SwiftUI
 
 struct ContentView: View {
-    @Query(sort: \RecentPlay.playedAt, order: .reverse)
-    private var recentPlays: [RecentPlay]
-    @State private var searchText = ""
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.homeDependencies) private var homeDependencies
+    @Environment(\.modelContext) private var modelContext
+    @State private var viewModel: HomeViewModel?
+    @State private var selectedSong: Song?
 
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                MCColor.background
-                    .ignoresSafeArea()
-
-                VStack(alignment: .leading, spacing: MCSpacing.xLarge) {
-                    FoundationHeaderView()
-
-                    MCSearchField(text: $searchText)
-
-                    if recentPlays.isEmpty {
-                        EmptyFoundationStateView()
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else {
-                        RecentSongsPreviewList(
-                            songs: recentPlays.compactMap(MCSongRowContent.init(recentPlay:))
-                        )
-                    }
-
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, MCSpacing.screenHorizontal)
-                .padding(.top, MCSpacing.xxLarge)
-                .padding(.bottom, 12)
-                .frame(maxWidth: 560, alignment: .leading)
-                .frame(maxWidth: .infinity)
-            }
-            .navigationTitle("")
-            .toolbar(.hidden, for: .navigationBar)
-        }
+    init(viewModel: HomeViewModel? = nil) {
+        self._viewModel = State(initialValue: viewModel)
     }
-}
 
-private struct FoundationHeaderView: View {
     var body: some View {
-        HStack {
-            Text("Songs")
-                .font(MCTypography.screenTitle)
-                .foregroundStyle(MCColor.primaryText)
-                .lineLimit(1)
-                .minimumScaleFactor(0.82)
-
-            Spacer(minLength: 0)
-        }
-    }
-}
-
-private struct EmptyFoundationStateView: View {
-    var body: some View {
-        VStack(spacing: MCSpacing.large) {
-            MCArtwork(url: nil, size: 96, cornerRadius: MCRadius.largeArtwork)
-
-            VStack(spacing: MCSpacing.xSmall) {
-                Text("No recent songs")
-                    .font(MCTypography.navigationTitle)
-                    .foregroundStyle(MCColor.primaryText)
-
-                Text("Search for a song to start building your library.")
-                    .font(MCTypography.body)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(MCColor.secondaryText)
-                    .fixedSize(horizontal: false, vertical: true)
+        Group {
+            if let viewModel {
+                homeRoot(viewModel: viewModel)
+            } else {
+                LoadingHomeBootstrapView()
             }
         }
-        .padding(.horizontal, MCSpacing.xxLarge)
-        .accessibilityElement(children: .combine)
-    }
-}
-
-private struct RecentSongsPreviewList: View {
-    let songs: [MCSongRowContent]
-
-    var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: MCSpacing.large) {
-                Text("Recently played")
-                    .font(MCTypography.navigationTitle)
-                    .foregroundStyle(MCColor.primaryText)
-
-                ForEach(songs) { song in
-                    MCSongRow(content: song)
-                }
+        .task {
+            if viewModel == nil {
+                viewModel = HomeViewModel(repository: homeDependencies.makeRepository(modelContext))
             }
+
+            guard let viewModel else { return }
+            await viewModel.loadRecentSongs()
         }
-        .scrollIndicators(.hidden)
-    }
-}
-
-private extension MCSongRowContent {
-    init?(recentPlay: RecentPlay) {
-        guard let cachedSong = recentPlay.song else {
-            return nil
-        }
-
-        self.init(cachedSong: cachedSong)
     }
 
-    init(cachedSong: CachedSong) {
-        self.init(
-            id: cachedSong.id,
-            title: cachedSong.title,
-            subtitle: cachedSong.artistName,
-            artworkURL: cachedSong.artworkURL
-        )
-    }
-}
-
-private struct DesignSystemFoundationPreview: View {
-    @State private var isPlaying = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: MCSpacing.xLarge) {
-            Text("Recently played")
-                .font(MCTypography.navigationTitle)
-                .foregroundStyle(MCColor.primaryText)
-
-            MCSongRow(
-                content: MCSongRowContent(
-                    id: "get-lucky",
-                    title: "Get Lucky",
-                    subtitle: "Daft Punk feat. Pharrell Williams"
+    @ViewBuilder
+    private func homeRoot(viewModel: HomeViewModel) -> some View {
+        if horizontalSizeClass == .regular {
+            NavigationSplitView {
+                HomeSongsScreen(
+                    viewModel: viewModel,
+                    selectedSong: selectedSong,
+                    onSelectSong: { selectedSong = $0 }
                 )
-            )
-
-            MCPlayerControls(isPlaying: isPlaying, onPlayPause: {
-                isPlaying.toggle()
-            })
-
-            MCMoreOptionsSheetSurface(title: "Song name", subtitle: "Artist name") {
-                MCMoreOptionsActionRow(systemName: "music.note.list", title: "View album") {}
+                .navigationTitle("")
+                .toolbar(.hidden, for: .navigationBar)
+            } detail: {
+                HomeSelectionDetail(song: selectedSong)
+            }
+        } else {
+            NavigationStack {
+                HomeSongsScreen(
+                    viewModel: viewModel,
+                    selectedSong: selectedSong,
+                    onSelectSong: { selectedSong = $0 }
+                )
+                .navigationTitle("")
+                .toolbar(.hidden, for: .navigationBar)
             }
         }
-        .padding()
-        .background(MCColor.background)
     }
-}
-
-#Preview {
-    ContentView()
-        .modelContainer(for: [CachedAlbum.self, CachedSong.self, RecentPlay.self], inMemory: true)
-}
-
-#Preview("Design System") {
-    DesignSystemFoundationPreview()
 }
