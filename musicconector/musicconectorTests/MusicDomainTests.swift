@@ -65,7 +65,12 @@ struct MusicDomainTests {
 
     @Test func recentSongsStorePersistsAndOrdersRecentSongsInMemory() async throws {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: CachedSong.self, configurations: configuration)
+        let container = try ModelContainer(
+            for: CachedAlbum.self,
+            CachedSong.self,
+            RecentPlay.self,
+            configurations: configuration
+        )
         let context = ModelContext(container)
         let store = SwiftDataRecentSongsStore(modelContext: context)
 
@@ -77,6 +82,55 @@ struct MusicDomainTests {
 
         #expect(recentSongs.map(\.id) == ["older", "newer"])
         #expect(recentSongs.first?.title == "Older Updated")
+    }
+
+    @Test func recentSongsStoreCachesViewedSongMetadataOffline() async throws {
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(
+            for: CachedAlbum.self,
+            CachedSong.self,
+            RecentPlay.self,
+            configurations: configuration
+        )
+        let store = SwiftDataRecentSongsStore(modelContext: ModelContext(container))
+        let song = sampleSong(id: "viewed", title: "Viewed Song")
+
+        try await store.saveViewedSong(song, viewedAt: Date(timeIntervalSince1970: 40))
+        let cachedSong = try await store.cachedSong(id: "viewed")
+        let recentSongs = try await store.recentlyPlayed(limit: 10)
+
+        #expect(cachedSong?.id == "viewed")
+        #expect(cachedSong?.albumTitle == "Random Access Memories")
+        #expect(cachedSong?.duration == 248)
+        #expect(recentSongs.isEmpty)
+    }
+
+    @Test func recentSongsStoreCachesViewedAlbumWithTracksOffline() async throws {
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(
+            for: CachedAlbum.self,
+            CachedSong.self,
+            RecentPlay.self,
+            configurations: configuration
+        )
+        let store = SwiftDataRecentSongsStore(modelContext: ModelContext(container))
+        let album = Album(
+            id: "album",
+            title: "Random Access Memories",
+            artist: Artist(id: "daft-punk", name: "Daft Punk"),
+            artworkURL: URL(string: "https://example.com/album.jpg"),
+            tracks: [
+                sampleSong(id: "track-1", title: "Give Life Back to Music"),
+                sampleSong(id: "track-2", title: "Get Lucky")
+            ]
+        )
+
+        try await store.saveViewedAlbum(album, viewedAt: Date(timeIntervalSince1970: 50))
+        let cachedAlbum = try await store.cachedAlbum(id: "album")
+
+        #expect(cachedAlbum?.id == "album")
+        #expect(cachedAlbum?.tracks.map(\.id) == ["track-1", "track-2"])
+        #expect(cachedAlbum?.tracks.last?.title == "Get Lucky")
     }
 }
 

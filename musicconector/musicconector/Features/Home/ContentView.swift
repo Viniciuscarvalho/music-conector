@@ -9,8 +9,8 @@ import SwiftData
 import SwiftUI
 
 struct ContentView: View {
-    @Query(sort: \CachedSong.lastPlayedAt, order: .reverse)
-    private var recentSongs: [CachedSong]
+    @Query(sort: \RecentPlay.playedAt, order: .reverse)
+    private var recentPlays: [RecentPlay]
     @State private var searchText = ""
 
     var body: some View {
@@ -24,12 +24,12 @@ struct ContentView: View {
 
                     MCSearchField(text: $searchText)
 
-                    if recentSongs.isEmpty {
+                    if recentPlays.isEmpty {
                         EmptyFoundationStateView()
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
                         RecentSongsPreviewList(
-                            songs: recentSongs.map(MCSongRowContent.init(cachedSong:))
+                            songs: recentPlays.compactMap(MCSongRowContent.init(recentPlay:))
                         )
                     }
 
@@ -103,6 +103,14 @@ private struct RecentSongsPreviewList: View {
 }
 
 private extension MCSongRowContent {
+    init?(recentPlay: RecentPlay) {
+        guard let cachedSong = recentPlay.song else {
+            return nil
+        }
+
+        self.init(cachedSong: cachedSong)
+    }
+
     init(cachedSong: CachedSong) {
         self.init(
             id: cachedSong.id,
@@ -145,7 +153,7 @@ private struct DesignSystemFoundationPreview: View {
 
 #Preview {
     ContentView()
-        .modelContainer(for: CachedSong.self, inMemory: true)
+        .modelContainer(for: [CachedAlbum.self, CachedSong.self, RecentPlay.self], inMemory: true)
 }
 
 #Preview("Design System") {
