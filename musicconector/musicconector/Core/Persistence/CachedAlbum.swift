@@ -1,5 +1,5 @@
 //
-//  CachedSong.swift
+//  CachedAlbum.swift
 //  musicconector
 //
 //  Created by Vinicius Carvalho on 19/05/26.
@@ -9,39 +9,30 @@ import Foundation
 import SwiftData
 
 @Model
-final class CachedSong {
+final class CachedAlbum {
     @Attribute(.unique) var id: String
     var title: String
     var artistName: String
-    var artistID: String?
-    var albumTitle: String?
-    var albumID: String?
+    var artistID: String
     var artworkURL: URL?
-    var duration: TimeInterval?
-    var releaseDate: Date?
-    var updatedAt: Date?
+    var trackIDs: [String]
+    var updatedAt: Date
 
     init(
         id: String,
         title: String,
         artistName: String,
         artistID: String? = nil,
-        albumTitle: String? = nil,
-        albumID: String? = nil,
         artworkURL: URL? = nil,
-        duration: TimeInterval? = nil,
-        releaseDate: Date? = nil,
+        trackIDs: [String] = [],
         updatedAt: Date = .now
     ) {
         self.id = id
         self.title = title
         self.artistName = artistName
-        self.artistID = artistID
-        self.albumTitle = albumTitle
-        self.albumID = albumID
+        self.artistID = artistID ?? artistName
         self.artworkURL = artworkURL
-        self.duration = duration
-        self.releaseDate = releaseDate
+        self.trackIDs = trackIDs
         self.updatedAt = updatedAt
     }
 }

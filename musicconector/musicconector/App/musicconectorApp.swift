@@ -12,7 +12,9 @@ import SwiftUI
 struct musicconectorApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
+            CachedAlbum.self,
             CachedSong.self,
+            RecentPlay.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
