@@ -10,7 +10,7 @@ import Foundation
 @MainActor
 protocol PlayerRepository {
     func requestAuthorization() async -> MusicAuthorizationState
-    func currentState() async -> PlaybackState
+    func currentState() async throws -> PlaybackState
     func play(song: Song) async throws
     func pause() async
     func resume() async throws
@@ -32,7 +32,7 @@ final class DefaultPlayerRepository: PlayerRepository {
         await playbackManager.requestAuthorization()
     }
 
-    func currentState() async -> PlaybackState {
+    func currentState() async throws -> PlaybackState {
         await playbackManager.currentState()
     }
 

@@ -10,15 +10,40 @@ import MusicKit
 
 extension Song {
     init(musicKitSong: MusicKit.Song) {
+        self.init(
+            id: musicKitSong.id.rawValue,
+            title: musicKitSong.title,
+            artist: Artist(
+                id: musicKitSong.artistName,
+                name: musicKitSong.artistName,
+                artworkURL: nil
+            ),
+            albumTitle: musicKitSong.albumTitle,
+            albumID: nil,
+            artworkURL: musicKitSong.artwork?.url(width: 512, height: 512),
+            duration: musicKitSong.duration,
+            releaseDate: musicKitSong.releaseDate
+        )
+    }
+
+    init(validatingMusicKitSong musicKitSong: MusicKit.Song) throws {
+        let songID = musicKitSong.id.rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = musicKitSong.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let artistName = musicKitSong.artistName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !songID.isEmpty, !title.isEmpty, !artistName.isEmpty else {
+            throw MusicCatalogError.invalidCatalogData(musicKitSong.id.rawValue)
+        }
+
         let artist = Artist(
-            id: musicKitSong.artistName,
-            name: musicKitSong.artistName,
+            id: artistName,
+            name: artistName,
             artworkURL: nil
         )
 
         self.init(
-            id: musicKitSong.id.rawValue,
-            title: musicKitSong.title,
+            id: songID,
+            title: title,
             artist: artist,
             albumTitle: musicKitSong.albumTitle,
             albumID: nil,

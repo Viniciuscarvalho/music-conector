@@ -25,50 +25,25 @@ struct PlayerScreen: View {
                     onBack: onBack
                 )
 
-                Spacer(minLength: 48)
-
-                MCArtwork(
-                    url: song.artworkURL,
-                    size: MCArtworkSize.player,
-                    cornerRadius: MCRadius.largeArtwork
-                )
-
-                Spacer(minLength: 76)
-
-                PlayerMetadataView(song: song)
-
-                PlayerProgressView(
-                    elapsedTime: viewModel.elapsedTime,
-                    duration: viewModel.duration,
-                    progress: viewModel.progress
-                )
-                .padding(.top, MCSpacing.large)
-
-                if let message = viewModel.message {
-                    Text(message)
-                        .font(MCTypography.songSubtitle)
-                        .foregroundStyle(MCColor.secondaryText)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, MCSpacing.medium)
-                        .accessibilityLabel(message)
-                }
-
-                MCPlayerControls(
-                    isPlaying: viewModel.isPlaying,
-                    isPreviousEnabled: false,
-                    isNextEnabled: false,
-                    onPlayPause: {
+                switch viewModel.state {
+                case .loading:
+                    MCLoadingStateView(title: "Loading player")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                case .error(let message):
+                    MCStateView(
+                        symbolName: "exclamationmark.triangle",
+                        title: "Player unavailable",
+                        message: message,
+                        actionTitle: "Retry"
+                    ) {
                         Task {
-                            await viewModel.playPauseTapped()
+                            await viewModel.load()
                         }
                     }
-                )
-                .disabled(viewModel.isPlaybackDisabled)
-                .opacity(viewModel.isPlaybackDisabled ? 0.44 : 1)
-                .padding(.top, MCSpacing.xLarge)
-
-                Spacer(minLength: 0)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                case .ready:
+                    PlayerReadyContent(song: song, viewModel: viewModel)
+                }
             }
             .padding(.horizontal, MCSpacing.screenHorizontal)
             .padding(.top, MCSpacing.large)
@@ -77,6 +52,58 @@ struct PlayerScreen: View {
         }
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
+    }
+}
+
+private struct PlayerReadyContent: View {
+    let song: Song
+    @Bindable var viewModel: PlayerViewModel
+
+    var body: some View {
+        Spacer(minLength: 48)
+
+        MCArtwork(
+            url: song.artworkURL,
+            size: MCArtworkSize.player,
+            cornerRadius: MCRadius.largeArtwork
+        )
+
+        Spacer(minLength: 76)
+
+        PlayerMetadataView(song: song)
+
+        PlayerProgressView(
+            elapsedTime: viewModel.elapsedTime,
+            duration: viewModel.duration,
+            progress: viewModel.progress
+        )
+        .padding(.top, MCSpacing.large)
+
+        if let message = viewModel.message {
+            Text(message)
+                .font(MCTypography.songSubtitle)
+                .foregroundStyle(MCColor.secondaryText)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, MCSpacing.medium)
+                .accessibilityLabel(message)
+        }
+
+        MCPlayerControls(
+            isPlaying: viewModel.isPlaying,
+            isPreviousEnabled: false,
+            isNextEnabled: false,
+            onPlayPause: {
+                Task {
+                    await viewModel.playPauseTapped()
+                }
+            }
+        )
+        .disabled(viewModel.isPlaybackDisabled)
+        .opacity(viewModel.isPlaybackDisabled ? 0.44 : 1)
+        .padding(.top, MCSpacing.xLarge)
+
+        Spacer(minLength: 0)
     }
 }
 
@@ -218,7 +245,7 @@ private struct PlayerProgressView: View {
 private final class PreviewPlayerRepository: PlayerRepository {
     func requestAuthorization() async -> MusicAuthorizationState { .authorized }
 
-    func currentState() async -> PlaybackState {
+    func currentState() async throws -> PlaybackState {
         PlaybackState(
             authorization: .authorized,
             availability: .playable,

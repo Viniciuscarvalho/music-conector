@@ -11,6 +11,13 @@ import Observation
 @MainActor
 @Observable
 final class PlayerViewModel {
+    enum State: Equatable {
+        case loading
+        case ready
+        case error(String)
+    }
+
+    private(set) var state: State = .loading
     private(set) var playbackState: PlaybackState
     private(set) var message: String?
 
@@ -62,8 +69,21 @@ final class PlayerViewModel {
     }
 
     func load() async {
-        playbackState = await repository.currentState().displaying(song: song)
-        message = playbackState.availability.displayMessage
+        state = .loading
+        message = nil
+
+        guard song.hasRequiredDisplayMetadata else {
+            state = .error("This song has incomplete metadata and cannot be displayed.")
+            return
+        }
+
+        do {
+            playbackState = try await repository.currentState().displaying(song: song)
+            message = playbackState.availability.displayMessage
+            state = .ready
+        } catch {
+            state = .error(Self.message(forLoadError: error))
+        }
     }
 
     func playPauseTapped() async {
@@ -73,7 +93,7 @@ final class PlayerViewModel {
             let persistenceMessage: String?
             if isPlaying {
                 await repository.pause()
-                playbackState = await repository.currentState().displaying(song: song)
+                playbackState = try await repository.currentState().displaying(song: song)
                 persistenceMessage = nil
             } else if playbackState.currentSong?.id == song.id, playbackState.status == .paused {
                 try await repository.resume()
@@ -83,8 +103,9 @@ final class PlayerViewModel {
                 persistenceMessage = await markRecentlyPlayed()
             }
 
-            playbackState = await repository.currentState().displaying(song: song)
+            playbackState = try await repository.currentState().displaying(song: song)
             message = persistenceMessage ?? playbackState.availability.displayMessage
+            state = .ready
             startProgressUpdates()
         } catch {
             playbackState = playbackState.withAvailability(error.playbackAvailability)
@@ -115,6 +136,26 @@ final class PlayerViewModel {
         } catch {
             return "Playback started, but this song could not be saved to recent songs."
         }
+    }
+
+    private static func message(forLoadError error: Error) -> String {
+        if error.isConnectionUnavailable {
+            return "Check your internet connection and try again."
+        }
+
+        if case MusicCatalogError.invalidCatalogData = error {
+            return "This song has incomplete metadata and cannot be displayed."
+        }
+
+        return "Player could not be loaded. Try again."
+    }
+}
+
+private extension Song {
+    var hasRequiredDisplayMetadata: Bool {
+        !id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !artist.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }
 

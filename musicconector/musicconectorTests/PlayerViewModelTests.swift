@@ -109,7 +109,36 @@ struct PlayerViewModelTests {
 
         #expect(viewModel.playbackState.currentSong?.id == song.id)
         #expect(viewModel.duration == song.duration)
+        #expect(viewModel.state == .ready)
         #expect(viewModel.message == "Apple Music access was denied.")
+    }
+
+    @Test func loadFailureShowsRetryableErrorState() async {
+        let song = samplePlayerSong()
+        let repository = PlayerRepositoryFake()
+        repository.currentStateError = URLError(.notConnectedToInternet)
+        let viewModel = PlayerViewModel(song: song, repository: repository)
+
+        await viewModel.load()
+
+        #expect(viewModel.state == .error("Check your internet connection and try again."))
+        #expect(viewModel.message == nil)
+    }
+
+    @Test func invalidSongMetadataShowsPlayerErrorState() async {
+        let song = Song(
+            id: "broken-song",
+            title: " ",
+            artist: Artist(id: "artist", name: "Daft Punk"),
+            duration: 240
+        )
+        let repository = PlayerRepositoryFake()
+        let viewModel = PlayerViewModel(song: song, repository: repository)
+
+        await viewModel.load()
+
+        #expect(viewModel.state == .error("This song has incomplete metadata and cannot be displayed."))
+        #expect(repository.currentStateCallCount == 0)
     }
 }
 
@@ -120,19 +149,26 @@ private final class PlayerRepositoryFake: PlayerRepository {
         availability: .playable,
         status: .stopped
     )
+    var currentStateError: Error?
     var playError: Error?
     var saveRecentError: Error?
     var progressStates: [PlaybackState] = []
     private(set) var playedSongIDs: [Song.ID] = []
     private(set) var savedRecentSongIDs: [Song.ID] = []
     private(set) var pauseCallCount = 0
+    private(set) var currentStateCallCount = 0
 
     func requestAuthorization() async -> MusicAuthorizationState {
         state.authorization
     }
 
-    func currentState() async -> PlaybackState {
-        state
+    func currentState() async throws -> PlaybackState {
+        currentStateCallCount += 1
+        if let currentStateError {
+            throw currentStateError
+        }
+
+        return state
     }
 
     func play(song: Song) async throws {

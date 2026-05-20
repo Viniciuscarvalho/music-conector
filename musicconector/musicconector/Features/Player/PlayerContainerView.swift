@@ -44,7 +44,9 @@ struct PlayerContainerView: View {
             }
 
             await viewModel?.load()
-            viewModel?.startProgressUpdates()
+            if viewModel?.state == .ready {
+                viewModel?.startProgressUpdates()
+            }
         }
         .onDisappear {
             viewModel?.stopProgressUpdates()
@@ -58,10 +60,7 @@ private struct LoadingPlayerView: View {
             MCColor.background
                 .ignoresSafeArea()
 
-            ProgressView()
-                .progressViewStyle(.circular)
-                .tint(MCColor.primaryText)
-                .accessibilityLabel("Loading player")
+            MCLoadingStateView(title: "Loading player")
         }
     }
 }
