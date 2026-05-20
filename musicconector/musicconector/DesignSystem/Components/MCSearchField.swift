@@ -10,10 +10,16 @@ import SwiftUI
 struct MCSearchField: View {
     @Binding var text: String
     let prompt: LocalizedStringKey
+    let onSubmit: () -> Void
 
-    init(text: Binding<String>, prompt: LocalizedStringKey = "Search") {
+    init(
+        text: Binding<String>,
+        prompt: LocalizedStringKey = "Search",
+        onSubmit: @escaping () -> Void = {}
+    ) {
         self._text = text
         self.prompt = prompt
+        self.onSubmit = onSubmit
     }
 
     var body: some View {
@@ -28,6 +34,7 @@ struct MCSearchField: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .submitLabel(.search)
+                .onSubmit(onSubmit)
         }
         .padding(.horizontal, MCSpacing.medium)
         .frame(minHeight: MCControlSize.searchHeight)
