@@ -20,6 +20,7 @@ final class musicconectorUITestsLaunchTests: XCTestCase {
     @MainActor
     func testLaunch() throws {
         let app = XCUIApplication()
+        app.launchArguments.append("-ui-testing")
         app.launch()
 
         XCTAssertTrue(app.staticTexts["Songs"].waitForExistence(timeout: 5))

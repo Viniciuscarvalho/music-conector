@@ -45,6 +45,18 @@ struct HomeViewModelTests {
         #expect(repository.searchRequests.map(\.term) == ["daft punk"])
     }
 
+    @Test func albumIDResolvesThroughRepositoryWhenSongHasNoAlbumID() async throws {
+        let repository = HomeRepositoryFake()
+        repository.resolvedAlbumID = "album-1"
+        let viewModel = HomeViewModel(repository: repository)
+        let song = sampleHomeSong(id: "song-1")
+
+        let albumID = try await viewModel.albumID(for: song)
+
+        #expect(albumID == "album-1")
+        #expect(repository.albumResolutionSongIDs == ["song-1"])
+    }
+
     @Test func searchEmptyResultShowsEmptyState() async {
         let repository = HomeRepositoryFake()
         repository.pages[0] = PagedResult(
@@ -199,6 +211,8 @@ private final class HomeRepositoryFake: HomeSongRepository {
     var recentSongsError: Error?
     var pages: [Int: PagedResult<Song>] = [:]
     var searchError: Error?
+    var resolvedAlbumID: Album.ID = "album"
+    private(set) var albumResolutionSongIDs: [Song.ID] = []
     private(set) var searchRequests: [SearchRequest] = []
 
     init(recentSongs: [Song] = [], recentSongsError: Error? = nil) {
@@ -222,6 +236,11 @@ private final class HomeRepositoryFake: HomeSongRepository {
         }
 
         return pages[page.offset] ?? PagedResult(items: [], page: page, nextPage: nil)
+    }
+
+    func albumID(for song: Song) async throws -> Album.ID {
+        albumResolutionSongIDs.append(song.id)
+        return resolvedAlbumID
     }
 }
 

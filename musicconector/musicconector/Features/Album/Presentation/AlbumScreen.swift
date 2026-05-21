@@ -45,6 +45,7 @@ struct AlbumScreen: View {
                         isEmpty: viewModel.state == .empty,
                         onSelectTrack: onSelectTrack
                     )
+                    .transition(.mcContent)
                 }
             }
             .padding(.horizontal, MCSpacing.screenHorizontal)
@@ -54,6 +55,9 @@ struct AlbumScreen: View {
         }
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
+        .animation(MCAnimation.standard, value: viewModel.state)
+        .mcBackSwipeGesture(isEnabled: showsBackButton, action: onBack)
+        .accessibilityIdentifier("album-screen")
     }
 }
 
@@ -119,9 +123,11 @@ private struct AlbumContent: View {
                                 showsMoreButton: false,
                                 onTap: { onSelectTrack(track) }
                             )
+                            .transition(.mcRow)
                         }
                     }
                     .padding(.top, MCSpacing.large)
+                    .animation(MCAnimation.standard, value: tracks.map(\.id))
                 }
             }
             .padding(.top, MCSpacing.medium)

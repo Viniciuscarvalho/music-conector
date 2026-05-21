@@ -50,8 +50,10 @@ struct MCPlayerControls: View {
                     .overlay {
                         Circle().stroke(MCColor.separator, lineWidth: 1)
                     }
+                    .contentTransition(.symbolEffect(.replace))
             }
             .accessibilityLabel(isPlaying ? "Pause" : "Play")
+            .accessibilityIdentifier("player-play-pause-button")
 
             Button(action: onNext) {
                 Image(systemName: "forward.fill")
@@ -63,6 +65,8 @@ struct MCPlayerControls: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(MCColor.primaryText)
+        .animation(MCAnimation.quick, value: isPlaying)
+        .accessibilityIdentifier("player-controls")
     }
 }
 

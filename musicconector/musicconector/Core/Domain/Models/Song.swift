@@ -36,4 +36,18 @@ struct Song: Identifiable, Equatable, Hashable, Sendable {
         self.duration = duration
         self.releaseDate = releaseDate
     }
+
+    var resolvedAlbumID: Album.ID? {
+        albumID?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+    }
+
+    var canResolveAlbum: Bool {
+        resolvedAlbumID != nil || albumTitle?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty != nil
+    }
+}
+
+extension String {
+    var nilIfEmpty: String? {
+        isEmpty ? nil : self
+    }
 }

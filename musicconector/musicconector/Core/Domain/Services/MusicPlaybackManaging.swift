@@ -20,5 +20,6 @@ enum MusicPlaybackError: Error, Equatable {
     case authorizationDenied
     case authorizationRestricted
     case subscriptionRequired
+    case playbackUnavailable(String)
     case songUnavailable(String)
 }

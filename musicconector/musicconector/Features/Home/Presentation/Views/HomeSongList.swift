@@ -37,6 +37,7 @@ struct HomeSongList: View {
                         selectionBackground(for: song),
                         in: RoundedRectangle(cornerRadius: MCRadius.searchField, style: .continuous)
                     )
+                    .transition(.mcRow)
                     .onAppear {
                         onSongAppeared(song)
                     }
@@ -61,6 +62,9 @@ struct HomeSongList: View {
             }
         }
         .scrollIndicators(.hidden)
+        .scrollDismissesKeyboard(.interactively)
+        .animation(MCAnimation.standard, value: songs.map(\.id))
+        .animation(MCAnimation.quick, value: selectedSongID)
     }
 
     private func selectionBackground(for song: Song) -> Color {

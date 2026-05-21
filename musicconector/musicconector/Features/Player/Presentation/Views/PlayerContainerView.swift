@@ -16,10 +16,12 @@ struct PlayerContainerView: View {
 
     let song: Song
     let showsBackButton: Bool
+    let onMoreOptions: (Song) -> Void
 
-    init(song: Song, showsBackButton: Bool = true) {
+    init(song: Song, showsBackButton: Bool = true, onMoreOptions: @escaping (Song) -> Void = { _ in }) {
         self.song = song
         self.showsBackButton = showsBackButton
+        self.onMoreOptions = onMoreOptions
     }
 
     var body: some View {
@@ -29,7 +31,8 @@ struct PlayerContainerView: View {
                     song: song,
                     viewModel: viewModel,
                     showsBackButton: showsBackButton,
-                    onBack: { dismiss() }
+                    onBack: { dismiss() },
+                    onMoreOptions: { onMoreOptions(song) }
                 )
             } else {
                 LoadingPlayerView()

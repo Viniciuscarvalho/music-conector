@@ -82,6 +82,22 @@ struct PlayerViewModelTests {
         #expect(repository.savedRecentSongIDs.isEmpty)
     }
 
+    @Test func playbackVerificationFailureShowsActionableFallbackState() async {
+        let song = samplePlayerSong()
+        let repository = PlayerRepositoryFake()
+        repository.playError = MusicPlaybackError.playbackUnavailable(
+            "Apple Music playback could not be verified. Open the Music app, confirm your subscription, then try again."
+        )
+        let viewModel = PlayerViewModel(song: song, repository: repository)
+
+        await viewModel.playPauseTapped()
+
+        #expect(!viewModel.isPlaying)
+        #expect(viewModel.isPlaybackDisabled)
+        #expect(viewModel.message == "Apple Music playback could not be verified. Open the Music app, confirm your subscription, then try again.")
+        #expect(repository.savedRecentSongIDs.isEmpty)
+    }
+
     @Test func recentPersistenceFailureDoesNotBlockPlayback() async {
         let song = samplePlayerSong()
         let repository = PlayerRepositoryFake()

@@ -16,6 +16,7 @@ struct RepositoryTests {
         let catalog = CatalogServiceSpy()
         let store = RecentSongsStoreSpy()
         store.recentSongs = [sampleRepositorySong(id: "recent")]
+        store.recentlyViewedSongs = [sampleRepositorySong(id: "viewed")]
         catalog.searchResult = PagedResult(
             items: [sampleRepositorySong(id: "result")],
             page: PageRequest(limit: 25, offset: 0),
@@ -29,7 +30,58 @@ struct RepositoryTests {
         #expect(recentSongs.map(\.id) == ["recent"])
         #expect(result.items.map(\.id) == ["result"])
         #expect(store.recentLimits == [1])
+        #expect(store.recentlyViewedLimits == [1])
+        #expect(store.viewedSongIDs == ["result"])
         #expect(catalog.searchTerms == ["daft punk"])
+    }
+
+    @Test func homeRepositoryShowsRecentlySearchedSongsWhenThereAreNoRecentlyPlayedSongs() async throws {
+        let catalog = CatalogServiceSpy()
+        let store = RecentSongsStoreSpy()
+        store.recentlyViewedSongs = [
+            sampleRepositorySong(id: "searched-1"),
+            sampleRepositorySong(id: "searched-2")
+        ]
+        let repository = DefaultHomeSongRepository(catalogService: catalog, recentSongsStore: store)
+
+        let recentSongs = try await repository.recentSongs(limit: 10)
+
+        #expect(recentSongs.map(\.id) == ["searched-1", "searched-2"])
+        #expect(catalog.searchTerms.isEmpty)
+    }
+
+    @Test func homeRepositoryUsesCachedSearchResultsBeforeRemoteCatalogForInitialSearch() async throws {
+        let catalog = CatalogServiceSpy()
+        let store = RecentSongsStoreSpy()
+        store.cachedSearchResults = [sampleRepositorySong(id: "cached")]
+        catalog.searchResult = PagedResult(
+            items: [sampleRepositorySong(id: "remote")],
+            page: PageRequest(limit: 25, offset: 0),
+            nextPage: nil
+        )
+        let repository = DefaultHomeSongRepository(catalogService: catalog, recentSongsStore: store)
+
+        let result = try await repository.searchSongs(term: "get lucky", page: PageRequest())
+
+        #expect(result.items.map(\.id) == ["cached"])
+        #expect(result.nextPage == nil)
+        #expect(store.cachedSearchTerms == ["get lucky"])
+        #expect(catalog.searchTerms.isEmpty)
+    }
+
+    @Test func homeRepositoryReturnsCachedSearchResultsWhenInitialRemoteSearchIsOffline() async throws {
+        let catalog = CatalogServiceSpy()
+        let store = RecentSongsStoreSpy()
+        let cachedSong = sampleRepositorySong(id: "cached")
+        catalog.searchError = URLError(.notConnectedToInternet)
+        store.cachedSearchResults = [cachedSong]
+        let repository = DefaultHomeSongRepository(catalogService: catalog, recentSongsStore: store)
+
+        let result = try await repository.searchSongs(term: "get lucky", page: PageRequest())
+
+        #expect(result.items.map(\.id) == ["cached"])
+        #expect(result.nextPage == nil)
+        #expect(store.cachedSearchTerms == ["get lucky"])
     }
 
     @Test func albumRepositoryLoadsRemoteAlbumAndCachesViewedMetadata() async throws {
@@ -75,6 +127,7 @@ struct RepositoryTests {
 @MainActor
 private final class CatalogServiceSpy: MusicCatalogServicing {
     var searchResult = PagedResult<Song>(items: [], page: PageRequest(), nextPage: nil)
+    var searchError: Error?
     var songResult = sampleRepositorySong(id: "song")
     var albumResult = sampleRepositoryAlbum(id: "album")
     private(set) var searchTerms: [String] = []
@@ -83,12 +136,19 @@ private final class CatalogServiceSpy: MusicCatalogServicing {
 
     func searchSongs(term: String, page: PageRequest) async throws -> PagedResult<Song> {
         searchTerms.append(term)
+        if let searchError {
+            throw searchError
+        }
         return searchResult
     }
 
     func song(id: Song.ID) async throws -> Song {
         songIDs.append(id)
         return songResult
+    }
+
+    func albumID(for song: Song) async throws -> Album.ID {
+        song.resolvedAlbumID ?? albumResult.id
     }
 
     func album(id: Album.ID) async throws -> Album {
@@ -100,13 +160,17 @@ private final class CatalogServiceSpy: MusicCatalogServicing {
 @MainActor
 private final class RecentSongsStoreSpy: RecentSongsStoring {
     var recentSongs: [Song] = []
+    var recentlyViewedSongs: [Song] = []
     var cachedAlbumResult: Album?
+    var cachedSearchResults: [Song] = []
     private(set) var recentLimits: [Int] = []
+    private(set) var recentlyViewedLimits: [Int] = []
     private(set) var savedRecentSongIDs: [Song.ID] = []
     private(set) var viewedSongIDs: [Song.ID] = []
     private(set) var viewedAlbumIDs: [Album.ID] = []
     private(set) var cachedSongIDs: [Song.ID] = []
     private(set) var cachedAlbumIDs: [Album.ID] = []
+    private(set) var cachedSearchTerms: [String] = []
 
     func saveRecentlyPlayed(_ song: Song, playedAt: Date) async throws {
         savedRecentSongIDs.append(song.id)
@@ -123,6 +187,16 @@ private final class RecentSongsStoreSpy: RecentSongsStoring {
     func recentlyPlayed(limit: Int) async throws -> [Song] {
         recentLimits.append(limit)
         return Array(recentSongs.prefix(limit))
+    }
+
+    func recentlyViewed(limit: Int) async throws -> [Song] {
+        recentlyViewedLimits.append(limit)
+        return Array(recentlyViewedSongs.prefix(limit))
+    }
+
+    func cachedSongs(matching term: String, limit: Int) async throws -> [Song] {
+        cachedSearchTerms.append(term)
+        return Array(cachedSearchResults.prefix(limit))
     }
 
     func cachedSong(id: Song.ID) async throws -> Song? {

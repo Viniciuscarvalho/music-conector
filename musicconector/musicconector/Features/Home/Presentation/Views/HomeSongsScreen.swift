@@ -13,6 +13,7 @@ struct HomeSongsScreen: View {
     let onSelectSong: (Song) -> Void
     let onMoreSong: (Song) -> Void
     @State private var isSearchInputExpanded = true
+    @FocusState private var isSearchFocused: Bool
 
     var body: some View {
         ZStack {
@@ -25,9 +26,22 @@ struct HomeSongsScreen: View {
                 HomeContentStateView(
                     viewModel: viewModel,
                     selectedSong: selectedSong,
-                    onSelectSong: onSelectSong,
-                    onMoreSong: onMoreSong
+                    onSelectSong: { song in
+                        isSearchFocused = false
+                        onSelectSong(song)
+                    },
+                    onMoreSong: { song in
+                        isSearchFocused = false
+                        onMoreSong(song)
+                    }
                 )
+                .contentShape(Rectangle())
+                .simultaneousGesture(
+                    TapGesture().onEnded {
+                        isSearchFocused = false
+                    }
+                )
+                .transition(.mcContent)
 
                 Spacer(minLength: 0)
             }
@@ -37,6 +51,8 @@ struct HomeSongsScreen: View {
             .frame(maxWidth: 560, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
+        .animation(MCAnimation.standard, value: viewModel.state)
+        .animation(MCAnimation.quick, value: isSearchInputExpanded)
         .task(id: viewModel.searchText) {
             await searchTextDidChange()
         }
@@ -46,16 +62,25 @@ struct HomeSongsScreen: View {
     private var header: some View {
         if viewModel.isSearchActive && !isSearchInputExpanded {
             CompactSearchHeader {
-                isSearchInputExpanded = true
-            }
-        } else {
-            FoundationHeaderView()
-
-            MCSearchField(text: $viewModel.searchText) {
-                if viewModel.isSearchActive {
-                    isSearchInputExpanded = false
+                withAnimation(MCAnimation.standard) {
+                    isSearchInputExpanded = true
+                    isSearchFocused = true
                 }
             }
+            .transition(.opacity.combined(with: .move(edge: .top)))
+        } else {
+            FoundationHeaderView()
+                .transition(.opacity.combined(with: .move(edge: .top)))
+
+            MCSearchField(text: $viewModel.searchText, isFocused: $isSearchFocused) {
+                if viewModel.isSearchActive {
+                    withAnimation(MCAnimation.standard) {
+                        isSearchInputExpanded = false
+                        isSearchFocused = false
+                    }
+                }
+            }
+            .transition(.opacity.combined(with: .move(edge: .top)))
         }
     }
 
@@ -63,7 +88,9 @@ struct HomeSongsScreen: View {
         let term = viewModel.searchText
         guard !term.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             viewModel.clearSearch()
-            isSearchInputExpanded = true
+            withAnimation(MCAnimation.standard) {
+                isSearchInputExpanded = true
+            }
             await viewModel.loadRecentSongs()
             return
         }

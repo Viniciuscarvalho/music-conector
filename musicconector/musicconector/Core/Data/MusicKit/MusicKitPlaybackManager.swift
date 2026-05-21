@@ -56,8 +56,15 @@ final class MusicKitPlaybackManager: MusicPlaybackManaging {
             }
         }
 
-        guard await canPlayCatalogContent() else {
+        switch await catalogPlaybackAvailability() {
+        case .playable:
+            break
+        case .subscriptionRequired:
             throw MusicPlaybackError.subscriptionRequired
+        case .unavailable(let message):
+            throw MusicPlaybackError.playbackUnavailable(message)
+        case .unknown, .authorizationRequired:
+            throw MusicPlaybackError.playbackUnavailable(Self.playbackVerificationMessage)
         }
 
         let catalogSong = try await musicKitSong(id: song.id)
@@ -92,7 +99,7 @@ final class MusicKitPlaybackManager: MusicPlaybackManaging {
     private func availability(for authorization: MusicAuthorizationState) async -> PlaybackAvailability {
         switch authorization {
         case .authorized:
-            await canPlayCatalogContent() ? .playable : .subscriptionRequired
+            await catalogPlaybackAvailability()
         case .notDetermined:
             .authorizationRequired
         case .denied:
@@ -104,14 +111,16 @@ final class MusicKitPlaybackManager: MusicPlaybackManaging {
         }
     }
 
-    private func canPlayCatalogContent() async -> Bool {
+    private func catalogPlaybackAvailability() async -> PlaybackAvailability {
         do {
             let subscription = try await MusicSubscription.current
-            return subscription.canPlayCatalogContent
+            return subscription.canPlayCatalogContent ? .playable : .subscriptionRequired
         } catch {
-            return false
+            return .unavailable(Self.playbackVerificationMessage)
         }
     }
+
+    private static let playbackVerificationMessage = "Apple Music playback could not be verified. Open the Music app, confirm your subscription, then try again."
 
     private func musicKitSong(id: Song.ID) async throws -> MusicKit.Song {
         var request = MusicCatalogResourceRequest<MusicKit.Song>(
