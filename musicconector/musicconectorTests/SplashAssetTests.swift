@@ -12,21 +12,21 @@ import Testing
 @MainActor
 struct SplashAssetTests {
 
-    @Test func compactWidthUsesPhoneSplash() {
+    @Test func compactWidthUsesPhoneSplashAsset() {
         let asset = SplashAsset(horizontalSizeClass: .compact)
 
         #expect(asset == .phone)
         #expect(asset.rawValue == "Splash")
     }
 
-    @Test func regularWidthUsesPadSplash() {
+    @Test func regularWidthUsesPadSplashAsset() {
         let asset = SplashAsset(horizontalSizeClass: .regular)
 
         #expect(asset == .pad)
         #expect(asset.rawValue == "Splash-iPad")
     }
 
-    @Test func nilSizeClassFallsBackToPhoneSplash() {
+    @Test func unknownWidthFallsBackToPhoneSplashAsset() {
         let asset = SplashAsset(horizontalSizeClass: nil)
 
         #expect(asset == .phone)
