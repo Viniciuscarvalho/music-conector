@@ -8,34 +8,59 @@
 import SwiftUI
 
 struct AppRootView: View {
-    @State private var isShowingSplash = true
+    private let authorizationProvider: MusicAuthorizationProviding
+    private let skipsSplashAndAuthorization: Bool
+    @State private var isShowingSplash: Bool
+
+    init(
+        authorizationProvider: MusicAuthorizationProviding = MusicKitAuthorizationProvider(),
+        skipsSplashAndAuthorization: Bool = ProcessInfo.processInfo.arguments.contains("-ui-testing")
+    ) {
+        self.authorizationProvider = authorizationProvider
+        self.skipsSplashAndAuthorization = skipsSplashAndAuthorization
+        self._isShowingSplash = State(initialValue: !skipsSplashAndAuthorization)
+    }
 
     var body: some View {
         ZStack {
             if isShowingSplash {
                 SplashScreen()
-                    .transition(.opacity)
+                    .transition(.opacity.combined(with: .scale(scale: 1.02)))
+                    .zIndex(1)
             } else {
                 ContentView()
-                    .transition(.opacity)
+                    .transition(.opacity.combined(with: .scale(scale: 0.985)))
+                    .zIndex(0)
             }
         }
         .background(MCColor.background)
         .task {
-            await hideSplashAfterMinimumDuration()
+            await dismissSplashAndRequestMusicAccess()
         }
     }
 
-    private func hideSplashAfterMinimumDuration() async {
+    private func dismissSplashAndRequestMusicAccess() async {
+        guard !skipsSplashAndAuthorization else { return }
+
         do {
-            try await Task.sleep(for: .milliseconds(900))
+            try await Task.sleep(for: .milliseconds(950))
         } catch {
             return
         }
 
         guard !Task.isCancelled else { return }
-        withAnimation(.easeOut(duration: 0.22)) {
+
+        withAnimation(MCAnimation.splashExit) {
             isShowingSplash = false
         }
+
+        do {
+            try await Task.sleep(for: .milliseconds(200))
+        } catch {
+            return
+        }
+
+        guard !Task.isCancelled else { return }
+        _ = await authorizationProvider.requestAuthorization()
     }
 }

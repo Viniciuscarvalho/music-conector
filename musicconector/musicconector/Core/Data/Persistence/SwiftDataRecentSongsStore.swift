@@ -79,6 +79,34 @@ final class SwiftDataRecentSongsStore: RecentSongsStoring {
         }
     }
 
+    func recentlyViewed(limit: Int = 10) async throws -> [Song] {
+        var descriptor = FetchDescriptor<CachedSong>(
+            sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
+        )
+        descriptor.fetchLimit = max(1, limit)
+
+        return try modelContext.fetch(descriptor).map(Song.init(cachedSong:))
+    }
+
+    func cachedSongs(matching term: String, limit: Int) async throws -> [Song] {
+        let normalizedTerm = term.trimmingCharacters(in: .whitespacesAndNewlines).localizedLowercase
+
+        var descriptor = FetchDescriptor<CachedSong>(
+            sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
+        )
+        descriptor.fetchLimit = 100
+
+        return try modelContext.fetch(descriptor)
+            .filter { cachedSong in
+                normalizedTerm.isEmpty
+                    || cachedSong.title.localizedLowercase.contains(normalizedTerm)
+                    || cachedSong.artistName.localizedLowercase.contains(normalizedTerm)
+                    || (cachedSong.albumTitle?.localizedLowercase.contains(normalizedTerm) ?? false)
+            }
+            .prefix(max(1, limit))
+            .map(Song.init(cachedSong:))
+    }
+
     func cachedSong(id: Song.ID) async throws -> Song? {
         try fetchCachedSong(id: id).map(Song.init(cachedSong:))
     }

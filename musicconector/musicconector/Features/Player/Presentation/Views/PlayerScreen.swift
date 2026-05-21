@@ -12,6 +12,7 @@ struct PlayerScreen: View {
     @Bindable var viewModel: PlayerViewModel
     let showsBackButton: Bool
     let onBack: () -> Void
+    let onMoreOptions: () -> Void
 
     var body: some View {
         ZStack {
@@ -22,7 +23,8 @@ struct PlayerScreen: View {
                 PlayerNavigationBar(
                     title: song.albumTitle ?? "Song",
                     showsBackButton: showsBackButton,
-                    onBack: onBack
+                    onBack: onBack,
+                    onMoreOptions: onMoreOptions
                 )
 
                 switch viewModel.state {
@@ -43,6 +45,7 @@ struct PlayerScreen: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 case .ready:
                     PlayerReadyContent(song: song, viewModel: viewModel)
+                        .transition(.mcContent)
                 }
             }
             .padding(.horizontal, MCSpacing.screenHorizontal)
@@ -52,6 +55,9 @@ struct PlayerScreen: View {
         }
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
+        .animation(MCAnimation.standard, value: viewModel.state)
+        .mcBackSwipeGesture(isEnabled: showsBackButton, action: onBack)
+        .accessibilityIdentifier("player-screen")
     }
 }
 
@@ -77,6 +83,7 @@ private struct PlayerReadyContent: View {
             duration: viewModel.duration,
             progress: viewModel.progress
         )
+        .accessibilityIdentifier("player-progress")
         .padding(.top, MCSpacing.large)
 
         if let message = viewModel.message {
@@ -111,6 +118,7 @@ private struct PlayerNavigationBar: View {
     let title: String
     let showsBackButton: Bool
     let onBack: () -> Void
+    let onMoreOptions: () -> Void
 
     var body: some View {
         ZStack {
@@ -124,7 +132,7 @@ private struct PlayerNavigationBar: View {
 
                 Spacer(minLength: 0)
 
-                MCCircularIconButton(systemName: "ellipsis", accessibilityLabel: "More options") {}
+                MCCircularIconButton(systemName: "ellipsis", accessibilityLabel: "More options", action: onMoreOptions)
             }
 
             Text(title)
@@ -183,11 +191,13 @@ private struct PlayerProgressView: View {
                     Capsule()
                         .fill(MCColor.primaryText)
                         .frame(width: proxy.size.width * progress, height: 5)
+                        .animation(MCAnimation.quick, value: progress)
 
                     Circle()
                         .fill(MCColor.primaryText)
                         .frame(width: 18, height: 18)
                         .offset(x: max(0, proxy.size.width * progress - 9))
+                        .animation(MCAnimation.quick, value: progress)
                 }
                 .frame(maxHeight: .infinity)
             }
@@ -237,7 +247,8 @@ private struct PlayerProgressView: View {
             repository: PreviewPlayerRepository()
         ),
         showsBackButton: true,
-        onBack: {}
+        onBack: {},
+        onMoreOptions: {}
     )
 }
 

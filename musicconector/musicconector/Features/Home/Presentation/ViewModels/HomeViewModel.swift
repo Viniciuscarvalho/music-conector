@@ -121,6 +121,10 @@ final class HomeViewModel {
         }
     }
 
+    func albumID(for song: Song) async throws -> Album.ID {
+        try await repository.albumID(for: song)
+    }
+
     private func shouldLoadNextPage(currentSongID: Song.ID?) -> Bool {
         guard let currentSongID else { return true }
         guard let currentIndex = searchResults.firstIndex(where: { $0.id == currentSongID }) else {
@@ -138,6 +142,10 @@ final class HomeViewModel {
 
         if case MusicCatalogError.invalidCatalogData = error {
             return "Some song data could not be loaded correctly. Try again in a moment."
+        }
+
+        if error.isAuthorizationUnavailable {
+            return "Apple Music access is unavailable. Check MusicKit permissions and try again."
         }
 
         return "We could not load songs for this search. Try again."

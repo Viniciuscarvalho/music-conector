@@ -12,6 +12,8 @@ protocol RecentSongsStoring {
     func saveViewedSong(_ song: Song, viewedAt: Date) async throws
     func saveViewedAlbum(_ album: Album, viewedAt: Date) async throws
     func recentlyPlayed(limit: Int) async throws -> [Song]
+    func recentlyViewed(limit: Int) async throws -> [Song]
+    func cachedSongs(matching term: String, limit: Int) async throws -> [Song]
     func cachedSong(id: Song.ID) async throws -> Song?
     func cachedAlbum(id: Album.ID) async throws -> Album?
 }

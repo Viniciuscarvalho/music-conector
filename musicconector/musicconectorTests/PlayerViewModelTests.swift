@@ -46,6 +46,29 @@ struct PlayerViewModelTests {
         #expect(viewModel.playbackState.status == .paused)
     }
 
+    @Test func playSelectedSongWhenAnotherSongIsCurrentlyPlaying() async {
+        let selectedSong = samplePlayerSong(id: "selected-song")
+        let otherSong = samplePlayerSong(id: "other-song")
+        let repository = PlayerRepositoryFake()
+        repository.state = PlaybackState(
+            authorization: .authorized,
+            availability: .playable,
+            status: .playing,
+            currentSong: otherSong,
+            elapsedTime: 24,
+            duration: otherSong.duration
+        )
+        let viewModel = PlayerViewModel(song: selectedSong, repository: repository)
+        await viewModel.load()
+
+        await viewModel.playPauseTapped()
+
+        #expect(viewModel.isPlaying)
+        #expect(repository.pauseCallCount == 0)
+        #expect(repository.playedSongIDs == ["selected-song"])
+        #expect(viewModel.playbackState.currentSong?.id == "selected-song")
+    }
+
     @Test func progressUpdatesRefreshElapsedTime() async throws {
         let song = samplePlayerSong()
         let repository = PlayerRepositoryFake()
@@ -79,6 +102,22 @@ struct PlayerViewModelTests {
         #expect(!viewModel.isPlaying)
         #expect(viewModel.isPlaybackDisabled)
         #expect(viewModel.message == "Apple Music access was denied.")
+        #expect(repository.savedRecentSongIDs.isEmpty)
+    }
+
+    @Test func playbackVerificationFailureShowsActionableFallbackState() async {
+        let song = samplePlayerSong()
+        let repository = PlayerRepositoryFake()
+        repository.playError = MusicPlaybackError.playbackUnavailable(
+            "Apple Music playback could not be verified. Open the Music app, confirm your subscription, then try again."
+        )
+        let viewModel = PlayerViewModel(song: song, repository: repository)
+
+        await viewModel.playPauseTapped()
+
+        #expect(!viewModel.isPlaying)
+        #expect(viewModel.isPlaybackDisabled)
+        #expect(viewModel.message == "Apple Music playback could not be verified. Open the Music app, confirm your subscription, then try again.")
         #expect(repository.savedRecentSongIDs.isEmpty)
     }
 
@@ -225,14 +264,14 @@ private final class PlayerRepositoryFake: PlayerRepository {
 }
 
 @MainActor
-private func samplePlayerSong() -> Song {
+private func samplePlayerSong(id: Song.ID = "get-lucky") -> Song {
     Song(
-        id: "get-lucky",
+        id: id,
         title: "Get Lucky",
         artist: Artist(id: "daft-punk", name: "Daft Punk feat. Pharrell Williams"),
         albumTitle: "Random Access Memories",
         albumID: "ram",
-        artworkURL: URL(string: "https://example.com/get-lucky.jpg"),
+        artworkURL: URL(string: "https://example.com/\(id).jpg"),
         duration: 240
     )
 }

@@ -28,9 +28,7 @@ struct musicconectorApp: App {
     var body: some Scene {
         WindowGroup {
             AppRootView()
-                .task {
-                    _ = await MusicKitAuthorizationProvider().requestAuthorization()
-                }
+                .musicConectorUITestDependenciesIfNeeded()
         }
         .modelContainer(sharedModelContainer)
     }

@@ -52,6 +52,7 @@ struct MCSongRow: View {
             .buttonStyle(.plain)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(content.title), \(content.subtitle)")
+            .accessibilityIdentifier("song-row-\(content.id)")
 
             if showsMoreButton {
                 Button(action: onMore) {
@@ -66,6 +67,7 @@ struct MCSongRow: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("More options for \(content.title)")
+                .accessibilityIdentifier("song-more-\(content.id)")
             }
         }
     }

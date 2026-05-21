@@ -43,7 +43,7 @@ final class PlayerViewModel {
     }
 
     var isPlaying: Bool {
-        playbackState.status == .playing
+        playbackState.currentSong?.id == song.id && playbackState.status == .playing
     }
 
     var isPlaybackDisabled: Bool {
@@ -211,6 +211,8 @@ private extension Error {
             return .unavailable("Apple Music access is restricted on this device.")
         case .subscriptionRequired:
             return .subscriptionRequired
+        case .playbackUnavailable(let message):
+            return .unavailable(message)
         case .songUnavailable:
             return .unavailable("This song is unavailable for full playback.")
         }

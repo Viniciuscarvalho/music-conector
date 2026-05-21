@@ -21,7 +21,7 @@ extension Song {
                 artworkURL: nil
             ),
             albumTitle: musicKitSong.albumTitle,
-            albumID: album?.id.rawValue,
+            albumID: album?.id.rawValue.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
             artworkURL: musicKitSong.artwork?.url(width: 512, height: 512),
             duration: musicKitSong.duration,
             releaseDate: musicKitSong.releaseDate
@@ -48,8 +48,8 @@ extension Song {
             id: songID,
             title: title,
             artist: artist,
-            albumTitle: musicKitSong.albumTitle,
-            albumID: album?.id.rawValue,
+            albumTitle: musicKitSong.albumTitle?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
+            albumID: album?.id.rawValue.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
             artworkURL: musicKitSong.artwork?.url(width: 512, height: 512),
             duration: musicKitSong.duration,
             releaseDate: musicKitSong.releaseDate
@@ -73,7 +73,7 @@ extension Song {
             title: title,
             artist: Artist(id: artistName, name: artistName),
             albumTitle: song.albumTitle ?? fallbackAlbum.title,
-            albumID: fallbackAlbum.id.rawValue,
+            albumID: fallbackAlbum.id.rawValue.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
             artworkURL: song.artwork?.url(width: 512, height: 512) ?? fallbackAlbum.artwork?.url(width: 512, height: 512),
             duration: song.duration,
             releaseDate: song.releaseDate

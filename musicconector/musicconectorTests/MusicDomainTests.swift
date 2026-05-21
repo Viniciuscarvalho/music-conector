@@ -98,11 +98,31 @@ struct MusicDomainTests {
         try await store.saveViewedSong(song, viewedAt: Date(timeIntervalSince1970: 40))
         let cachedSong = try await store.cachedSong(id: "viewed")
         let recentSongs = try await store.recentlyPlayed(limit: 10)
+        let recentlyViewedSongs = try await store.recentlyViewed(limit: 10)
 
         #expect(cachedSong?.id == "viewed")
         #expect(cachedSong?.albumTitle == "Random Access Memories")
         #expect(cachedSong?.duration == 248)
         #expect(recentSongs.isEmpty)
+        #expect(recentlyViewedSongs.map(\.id) == ["viewed"])
+    }
+
+    @Test func recentSongsStoreSearchesCachedMetadataOffline() async throws {
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(
+            for: CachedAlbum.self,
+            CachedSong.self,
+            RecentPlay.self,
+            configurations: configuration
+        )
+        let store = SwiftDataRecentSongsStore(modelContext: ModelContext(container))
+
+        try await store.saveViewedSong(sampleSong(id: "daft-1", title: "Get Lucky"), viewedAt: Date(timeIntervalSince1970: 40))
+        try await store.saveViewedSong(sampleSong(id: "prince-1", title: "Purple Rain"), viewedAt: Date(timeIntervalSince1970: 50))
+
+        let cachedSongs = try await store.cachedSongs(matching: "purple", limit: 10)
+
+        #expect(cachedSongs.map(\.id) == ["prince-1"])
     }
 
     @Test func recentSongsStoreCachesViewedAlbumWithTracksOffline() async throws {
@@ -150,6 +170,10 @@ private final class MockCatalogService: MusicCatalogServicing {
 
     func song(id: Song.ID) async throws -> Song {
         sampleSong(id: id)
+    }
+
+    func albumID(for song: Song) async throws -> Album.ID {
+        song.resolvedAlbumID ?? "album"
     }
 
     func album(id: Album.ID) async throws -> Album {

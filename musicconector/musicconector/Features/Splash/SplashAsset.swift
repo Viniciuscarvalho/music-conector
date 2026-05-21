@@ -12,10 +12,6 @@ enum SplashAsset: String, Equatable {
     case pad = "Splash-iPad"
 
     init(horizontalSizeClass: UserInterfaceSizeClass?) {
-        if horizontalSizeClass == .regular {
-            self = .pad
-        } else {
-            self = .phone
-        }
+        self = horizontalSizeClass == .regular ? .pad : .phone
     }
 }

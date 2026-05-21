@@ -33,7 +33,8 @@ struct MCArtwork: View {
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-        .accessibilityHidden(true)
+        .accessibilityLabel("Artwork")
+        .accessibilityIdentifier("artwork")
     }
 
     private var placeholder: some View {
