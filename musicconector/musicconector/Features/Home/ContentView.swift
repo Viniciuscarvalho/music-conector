@@ -10,11 +10,13 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.homeDependencies) private var homeDependencies
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: HomeViewModel?
     @State private var selectedDetail: HomeDetail?
     @State private var navigationPath: [HomeRoute] = []
+    @State private var splitColumnVisibility: NavigationSplitViewVisibility = .all
     @State private var moreOptionsSong: Song?
 
     init(viewModel: HomeViewModel? = nil) {
@@ -41,13 +43,23 @@ struct ContentView: View {
 
     @ViewBuilder
     private func homeRoot(viewModel: HomeViewModel) -> some View {
-        if horizontalSizeClass == .regular {
-            NavigationSplitView {
+        let layout = HomeAdaptiveLayout(
+            horizontalSizeClass: horizontalSizeClass,
+            verticalSizeClass: verticalSizeClass
+        )
+
+        if layout.usesSplitLayout {
+            NavigationSplitView(columnVisibility: $splitColumnVisibility) {
                 HomeSongsScreen(
                     viewModel: viewModel,
                     selectedSong: selectedSong,
                     onSelectSong: { selectedDetail = .player($0) },
                     onMoreSong: { moreOptionsSong = $0 }
+                )
+                .navigationSplitViewColumnWidth(
+                    min: layout.sidebar.minimumWidth,
+                    ideal: layout.sidebar.idealWidth,
+                    max: layout.sidebar.maximumWidth
                 )
                 .navigationTitle("")
                 .toolbar(.hidden, for: .navigationBar)
@@ -63,6 +75,7 @@ struct ContentView: View {
                     HomeSelectionDetail(song: nil)
                 }
             }
+            .navigationSplitViewStyle(.balanced)
             .sheet(item: $moreOptionsSong) { song in
                 MoreOptionsSheet(song: song) { albumID in
                     moreOptionsSong = nil
