@@ -21,7 +21,14 @@ struct MusicKitCatalogService: MusicCatalogServicing {
         request.offset = page.offset
 
         let response = try await request.response()
-        let songs = try response.songs.map(Song.init(validatingMusicKitSong:))
+        var songs: [Song] = []
+        songs.reserveCapacity(response.songs.count)
+
+        for song in response.songs {
+            let detailedSong = try await song.with(.albums)
+            songs.append(try Song(validatingMusicKitSong: detailedSong))
+        }
+
         let nextPage = songs.count == page.limit ? page.next : nil
 
         return PagedResult(items: songs, page: page, nextPage: nextPage)
@@ -33,6 +40,7 @@ struct MusicKitCatalogService: MusicCatalogServicing {
             equalTo: MusicItemID(id)
         )
         request.limit = 1
+        request.properties = [.albums]
 
         let response = try await request.response()
         guard let song = response.items.first else {
@@ -40,5 +48,21 @@ struct MusicKitCatalogService: MusicCatalogServicing {
         }
 
         return try Song(validatingMusicKitSong: song)
+    }
+
+    func album(id: Album.ID) async throws -> Album {
+        var request = MusicCatalogResourceRequest<MusicKit.Album>(
+            matching: \.id,
+            equalTo: MusicItemID(id)
+        )
+        request.limit = 1
+        request.properties = [.tracks]
+
+        let response = try await request.response()
+        guard let album = response.items.first else {
+            throw MusicCatalogError.albumNotFound(id)
+        }
+
+        return try Album(validatingMusicKitAlbum: album)
     }
 }

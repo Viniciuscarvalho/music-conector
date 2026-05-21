@@ -151,6 +151,15 @@ private final class MockCatalogService: MusicCatalogServicing {
     func song(id: Song.ID) async throws -> Song {
         sampleSong(id: id)
     }
+
+    func album(id: Album.ID) async throws -> Album {
+        Album(
+            id: id,
+            title: "Random Access Memories",
+            artist: Artist(id: "daft-punk", name: "Daft Punk"),
+            tracks: [sampleSong(id: "track")]
+        )
+    }
 }
 
 @MainActor
