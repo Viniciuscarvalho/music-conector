@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct Artist: Identifiable, Equatable, Sendable {
+struct Artist: Identifiable, Equatable, Hashable, Sendable {
     let id: String
     let name: String
     let artworkURL: URL?

@@ -21,7 +21,7 @@ struct MusicKitCatalogService: MusicCatalogServicing {
         request.offset = page.offset
 
         let response = try await request.response()
-        let songs = response.songs.map(Song.init(musicKitSong:))
+        let songs = try response.songs.map(Song.init(validatingMusicKitSong:))
         let nextPage = songs.count == page.limit ? page.next : nil
 
         return PagedResult(items: songs, page: page, nextPage: nextPage)
@@ -39,6 +39,6 @@ struct MusicKitCatalogService: MusicCatalogServicing {
             throw MusicCatalogError.songNotFound(id)
         }
 
-        return Song(musicKitSong: song)
+        return try Song(validatingMusicKitSong: song)
     }
 }

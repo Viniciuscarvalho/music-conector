@@ -14,5 +14,6 @@ protocol MusicCatalogServicing {
 
 enum MusicCatalogError: Error, Equatable {
     case emptySearchTerm
+    case invalidCatalogData(String)
     case songNotFound(String)
 }

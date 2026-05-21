@@ -19,5 +19,6 @@ protocol MusicPlaybackManaging {
 enum MusicPlaybackError: Error, Equatable {
     case authorizationDenied
     case authorizationRestricted
+    case subscriptionRequired
     case songUnavailable(String)
 }

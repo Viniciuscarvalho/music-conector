@@ -49,7 +49,11 @@ struct ContentView: View {
                 .navigationTitle("")
                 .toolbar(.hidden, for: .navigationBar)
             } detail: {
-                HomeSelectionDetail(song: selectedSong)
+                if let selectedSong {
+                    PlayerContainerView(song: selectedSong, showsBackButton: false)
+                } else {
+                    HomeSelectionDetail(song: nil)
+                }
             }
         } else {
             NavigationStack {
@@ -60,6 +64,9 @@ struct ContentView: View {
                 )
                 .navigationTitle("")
                 .toolbar(.hidden, for: .navigationBar)
+                .navigationDestination(item: $selectedSong) { song in
+                    PlayerContainerView(song: song)
+                }
             }
         }
     }

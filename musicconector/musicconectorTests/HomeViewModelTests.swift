@@ -120,8 +120,53 @@ struct HomeViewModelTests {
 
         await viewModel.search(term: "missing")
 
-        #expect(viewModel.state == .error("We could not load songs for this search."))
+        #expect(viewModel.state == .error("We could not load songs for this search. Try again."))
         #expect(viewModel.searchResults.isEmpty)
+    }
+
+    @Test func connectionFailureSearchShowsNetworkErrorState() async {
+        let repository = HomeRepositoryFake()
+        repository.searchError = URLError(.notConnectedToInternet)
+        let viewModel = HomeViewModel(repository: repository)
+
+        await viewModel.search(term: "get lucky")
+
+        #expect(viewModel.state == .error("Check your internet connection and try again."))
+        #expect(viewModel.searchResults.isEmpty)
+    }
+
+    @Test func invalidCatalogMappingSearchShowsDataErrorState() async {
+        let repository = HomeRepositoryFake()
+        repository.searchError = MusicCatalogError.invalidCatalogData("song-id")
+        let viewModel = HomeViewModel(repository: repository)
+
+        await viewModel.search(term: "broken metadata")
+
+        #expect(viewModel.state == .error("Some song data could not be loaded correctly. Try again in a moment."))
+        #expect(viewModel.searchResults.isEmpty)
+    }
+
+    @Test func paginationConnectionFailureKeepsCurrentResultsAndShowsInlineError() async {
+        let repository = HomeRepositoryFake()
+        let firstPage = PageRequest(limit: 25, offset: 0)
+        repository.pages[0] = PagedResult(
+            items: [
+                sampleHomeSong(id: "song-1"),
+                sampleHomeSong(id: "song-2"),
+                sampleHomeSong(id: "song-3")
+            ],
+            page: firstPage,
+            nextPage: firstPage.next
+        )
+        let viewModel = HomeViewModel(repository: repository)
+
+        await viewModel.search(term: "daft punk")
+        repository.searchError = URLError(.networkConnectionLost)
+        await viewModel.loadNextPageIfNeeded(currentSongID: "song-3")
+
+        #expect(viewModel.state == .results)
+        #expect(viewModel.searchResults.map(\.id) == ["song-1", "song-2", "song-3"])
+        #expect(viewModel.paginationErrorMessage == "No internet connection. Pull back and try again.")
     }
 
     @Test func recentStoreFailureShowsOfflineState() async {
@@ -129,7 +174,16 @@ struct HomeViewModelTests {
 
         await viewModel.loadRecentSongs()
 
-        #expect(viewModel.state == .offline("Recent songs are unavailable offline on this device."))
+        #expect(viewModel.state == .offline("Recent songs are unavailable on this device."))
+        #expect(viewModel.recentSongs.isEmpty)
+    }
+
+    @Test func recentStoreConnectionFailureShowsOfflineNetworkMessage() async {
+        let viewModel = HomeViewModel(repository: HomeRepositoryFake(recentSongsError: URLError(.timedOut)))
+
+        await viewModel.loadRecentSongs()
+
+        #expect(viewModel.state == .offline("No internet connection, and recent songs are unavailable on this device."))
         #expect(viewModel.recentSongs.isEmpty)
     }
 }
