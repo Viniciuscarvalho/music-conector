@@ -43,7 +43,7 @@ final class PlayerViewModel {
     }
 
     var isPlaying: Bool {
-        playbackState.status == .playing
+        playbackState.currentSong?.id == song.id && playbackState.status == .playing
     }
 
     var isPlaybackDisabled: Bool {
