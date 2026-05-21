@@ -9,12 +9,19 @@ import Foundation
 import MusicKit
 
 struct MusicKitCatalogService: MusicCatalogServicing {
+    private let authorizationProvider: MusicAuthorizationProviding
+
+    init(authorizationProvider: MusicAuthorizationProviding = MusicKitAuthorizationProvider()) {
+        self.authorizationProvider = authorizationProvider
+    }
 
     func searchSongs(term: String, page: PageRequest) async throws -> PagedResult<Song> {
         let trimmedTerm = term.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedTerm.isEmpty else {
             throw MusicCatalogError.emptySearchTerm
         }
+
+        await requestAuthorizationIfNeeded()
 
         var request = MusicCatalogSearchRequest(term: trimmedTerm, types: [MusicKit.Song.self])
         request.limit = page.limit
@@ -35,6 +42,8 @@ struct MusicKitCatalogService: MusicCatalogServicing {
     }
 
     func song(id: Song.ID) async throws -> Song {
+        await requestAuthorizationIfNeeded()
+
         var request = MusicCatalogResourceRequest<MusicKit.Song>(
             matching: \.id,
             equalTo: MusicItemID(id)
@@ -51,6 +60,8 @@ struct MusicKitCatalogService: MusicCatalogServicing {
     }
 
     func album(id: Album.ID) async throws -> Album {
+        await requestAuthorizationIfNeeded()
+
         var request = MusicCatalogResourceRequest<MusicKit.Album>(
             matching: \.id,
             equalTo: MusicItemID(id)
@@ -64,5 +75,10 @@ struct MusicKitCatalogService: MusicCatalogServicing {
         }
 
         return try Album(validatingMusicKitAlbum: album)
+    }
+
+    private func requestAuthorizationIfNeeded() async {
+        guard await authorizationProvider.currentStatus() == .notDetermined else { return }
+        _ = await authorizationProvider.requestAuthorization()
     }
 }
