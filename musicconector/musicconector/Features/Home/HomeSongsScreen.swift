@@ -11,6 +11,7 @@ struct HomeSongsScreen: View {
     @Bindable var viewModel: HomeViewModel
     let selectedSong: Song?
     let onSelectSong: (Song) -> Void
+    let onMoreSong: (Song) -> Void
     @State private var isSearchInputExpanded = true
 
     var body: some View {
@@ -24,7 +25,8 @@ struct HomeSongsScreen: View {
                 HomeContentStateView(
                     viewModel: viewModel,
                     selectedSong: selectedSong,
-                    onSelectSong: onSelectSong
+                    onSelectSong: onSelectSong,
+                    onMoreSong: onMoreSong
                 )
 
                 Spacer(minLength: 0)

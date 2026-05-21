@@ -32,7 +32,7 @@ final class MusicKitPlaybackManager: MusicPlaybackManaging {
         let authorization = await authorizationProvider.currentStatus()
         return PlaybackState(
             authorization: authorization,
-            availability: availability(for: authorization),
+            availability: await availability(for: authorization),
             status: PlaybackStatus(musicKitStatus: player.state.playbackStatus),
             currentSong: currentDomainSong,
             elapsedTime: player.playbackTime,
@@ -54,6 +54,10 @@ final class MusicKitPlaybackManager: MusicPlaybackManaging {
             guard requested == .authorized else {
                 throw MusicPlaybackError.authorizationDenied
             }
+        }
+
+        guard await canPlayCatalogContent() else {
+            throw MusicPlaybackError.subscriptionRequired
         }
 
         let catalogSong = try await musicKitSong(id: song.id)
@@ -85,10 +89,10 @@ final class MusicKitPlaybackManager: MusicPlaybackManaging {
         }
     }
 
-    private func availability(for authorization: MusicAuthorizationState) -> PlaybackAvailability {
+    private func availability(for authorization: MusicAuthorizationState) async -> PlaybackAvailability {
         switch authorization {
         case .authorized:
-            .playable
+            await canPlayCatalogContent() ? .playable : .subscriptionRequired
         case .notDetermined:
             .authorizationRequired
         case .denied:
@@ -97,6 +101,15 @@ final class MusicKitPlaybackManager: MusicPlaybackManaging {
             .unavailable("Apple Music access is restricted on this device.")
         case .unknown:
             .unknown
+        }
+    }
+
+    private func canPlayCatalogContent() async -> Bool {
+        do {
+            let subscription = try await MusicSubscription.current
+            return subscription.canPlayCatalogContent
+        } catch {
+            return false
         }
     }
 

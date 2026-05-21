@@ -52,7 +52,7 @@ final class HomeViewModel {
         } catch {
             recentSongs = []
             if !isSearchActive {
-                state = .offline("Recent songs are unavailable offline on this device.")
+                state = .offline(Self.message(forRecentSongsError: error))
             }
         }
     }
@@ -83,7 +83,7 @@ final class HomeViewModel {
 
             searchResults = []
             nextPage = nil
-            state = .error("We could not load songs for this search.")
+            state = .error(Self.message(forSearchError: error))
         }
     }
 
@@ -117,7 +117,7 @@ final class HomeViewModel {
             searchResults.append(contentsOf: newSongs)
             self.nextPage = result.nextPage
         } catch {
-            paginationErrorMessage = "We could not load more songs."
+            paginationErrorMessage = Self.message(forPaginationError: error)
         }
     }
 
@@ -129,5 +129,37 @@ final class HomeViewModel {
 
         let thresholdIndex = max(searchResults.startIndex, searchResults.count - 3)
         return currentIndex >= thresholdIndex
+    }
+
+    private static func message(forSearchError error: Error) -> String {
+        if error.isConnectionUnavailable {
+            return "Check your internet connection and try again."
+        }
+
+        if case MusicCatalogError.invalidCatalogData = error {
+            return "Some song data could not be loaded correctly. Try again in a moment."
+        }
+
+        return "We could not load songs for this search. Try again."
+    }
+
+    private static func message(forPaginationError error: Error) -> String {
+        if error.isConnectionUnavailable {
+            return "No internet connection. Pull back and try again."
+        }
+
+        if case MusicCatalogError.invalidCatalogData = error {
+            return "More songs could not be displayed because some data was incomplete."
+        }
+
+        return "We could not load more songs."
+    }
+
+    private static func message(forRecentSongsError error: Error) -> String {
+        if error.isConnectionUnavailable {
+            return "No internet connection, and recent songs are unavailable on this device."
+        }
+
+        return "Recent songs are unavailable on this device."
     }
 }
