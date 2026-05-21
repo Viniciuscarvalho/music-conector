@@ -10,6 +10,8 @@ import MusicKit
 
 extension Song {
     init(musicKitSong: MusicKit.Song) {
+        let album = musicKitSong.albums?.first
+
         self.init(
             id: musicKitSong.id.rawValue,
             title: musicKitSong.title,
@@ -19,7 +21,7 @@ extension Song {
                 artworkURL: nil
             ),
             albumTitle: musicKitSong.albumTitle,
-            albumID: nil,
+            albumID: album?.id.rawValue,
             artworkURL: musicKitSong.artwork?.url(width: 512, height: 512),
             duration: musicKitSong.duration,
             releaseDate: musicKitSong.releaseDate
@@ -30,6 +32,7 @@ extension Song {
         let songID = musicKitSong.id.rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
         let title = musicKitSong.title.trimmingCharacters(in: .whitespacesAndNewlines)
         let artistName = musicKitSong.artistName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let album = musicKitSong.albums?.first
 
         guard !songID.isEmpty, !title.isEmpty, !artistName.isEmpty else {
             throw MusicCatalogError.invalidCatalogData(musicKitSong.id.rawValue)
@@ -46,10 +49,58 @@ extension Song {
             title: title,
             artist: artist,
             albumTitle: musicKitSong.albumTitle,
-            albumID: nil,
+            albumID: album?.id.rawValue,
             artworkURL: musicKitSong.artwork?.url(width: 512, height: 512),
             duration: musicKitSong.duration,
             releaseDate: musicKitSong.releaseDate
+        )
+    }
+}
+
+extension Song {
+    init?(validatingMusicKitTrack musicKitTrack: MusicKit.Track, fallbackAlbum: MusicKit.Album) {
+        guard case .song(let song) = musicKitTrack else { return nil }
+        let songID = song.id.rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = song.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let artistName = song.artistName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !songID.isEmpty, !title.isEmpty, !artistName.isEmpty else {
+            return nil
+        }
+
+        self.init(
+            id: songID,
+            title: title,
+            artist: Artist(id: artistName, name: artistName),
+            albumTitle: song.albumTitle ?? fallbackAlbum.title,
+            albumID: fallbackAlbum.id.rawValue,
+            artworkURL: song.artwork?.url(width: 512, height: 512) ?? fallbackAlbum.artwork?.url(width: 512, height: 512),
+            duration: song.duration,
+            releaseDate: song.releaseDate
+        )
+    }
+}
+
+extension Album {
+    init(validatingMusicKitAlbum musicKitAlbum: MusicKit.Album) throws {
+        let albumID = musicKitAlbum.id.rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = musicKitAlbum.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let artistName = musicKitAlbum.artistName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !albumID.isEmpty, !title.isEmpty, !artistName.isEmpty else {
+            throw MusicCatalogError.invalidCatalogData(musicKitAlbum.id.rawValue)
+        }
+
+        let tracks = musicKitAlbum.tracks?.compactMap { track in
+            Song(validatingMusicKitTrack: track, fallbackAlbum: musicKitAlbum)
+        } ?? []
+
+        self.init(
+            id: albumID,
+            title: title,
+            artist: Artist(id: artistName, name: artistName),
+            artworkURL: musicKitAlbum.artwork?.url(width: 512, height: 512),
+            tracks: tracks
         )
     }
 }

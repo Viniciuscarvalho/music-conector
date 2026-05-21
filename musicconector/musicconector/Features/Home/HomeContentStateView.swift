@@ -11,6 +11,7 @@ struct HomeContentStateView: View {
     @Bindable var viewModel: HomeViewModel
     let selectedSong: Song?
     let onSelectSong: (Song) -> Void
+    let onMoreSong: (Song) -> Void
 
     var body: some View {
         switch viewModel.state {
@@ -63,7 +64,7 @@ struct HomeContentStateView: View {
                 isLoadingNextPage: viewModel.isLoadingNextPage,
                 paginationErrorMessage: viewModel.paginationErrorMessage,
                 onSelectSong: onSelectSong,
-                onMore: { _ in },
+                onMore: onMoreSong,
                 onSongAppeared: { song in
                     Task {
                         await viewModel.loadNextPageIfNeeded(currentSongID: song.id)
