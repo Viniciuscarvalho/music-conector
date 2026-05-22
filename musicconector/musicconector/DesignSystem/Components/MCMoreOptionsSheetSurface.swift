@@ -7,6 +7,16 @@
 
 import SwiftUI
 
+private enum MCMoreOptionsSheetLayout {
+    static let horizontalPadding: CGFloat = 16
+    static let headerVerticalPadding: CGFloat = 14
+    static let contentVerticalPadding: CGFloat = 12
+    static let actionSpacing: CGFloat = 10
+    static let iconFrame: CGFloat = 24
+    static let iconSize: CGFloat = 16
+    static let actionMinHeight: CGFloat = 44
+}
+
 struct MCMoreOptionsSheetSurface<Content: View>: View {
     let title: String
     let subtitle: String
@@ -34,15 +44,12 @@ struct MCMoreOptionsSheetSurface<Content: View>: View {
                     .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
-            .padding(.horizontal, MCSpacing.xLarge)
-            .padding(.vertical, MCSpacing.large)
-
-            Divider()
-                .overlay(MCColor.separator)
+            .padding(.horizontal, MCMoreOptionsSheetLayout.horizontalPadding)
+            .padding(.vertical, MCMoreOptionsSheetLayout.headerVerticalPadding)
 
             content
-                .padding(.horizontal, MCSpacing.xLarge)
-                .padding(.vertical, MCSpacing.large)
+                .padding(.horizontal, MCMoreOptionsSheetLayout.horizontalPadding)
+                .padding(.vertical, MCMoreOptionsSheetLayout.contentVerticalPadding)
         }
         .background(MCColor.elevatedSurface, in: RoundedRectangle(cornerRadius: MCRadius.sheet, style: .continuous))
         .accessibilityElement(children: .contain)
@@ -56,9 +63,13 @@ struct MCMoreOptionsActionRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: MCSpacing.medium) {
+            HStack(spacing: MCMoreOptionsSheetLayout.actionSpacing) {
                 Image(systemName: systemName)
-                    .frame(width: 24, height: 24)
+                    .font(.system(size: MCMoreOptionsSheetLayout.iconSize, weight: .regular))
+                    .frame(
+                        width: MCMoreOptionsSheetLayout.iconFrame,
+                        height: MCMoreOptionsSheetLayout.iconFrame
+                    )
                     .accessibilityHidden(true)
 
                 Text(title)
@@ -67,7 +78,7 @@ struct MCMoreOptionsActionRow: View {
                 Spacer()
             }
             .foregroundStyle(MCColor.primaryText)
-            .frame(minHeight: 44)
+            .frame(minHeight: MCMoreOptionsSheetLayout.actionMinHeight)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
