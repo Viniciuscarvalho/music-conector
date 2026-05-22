@@ -43,6 +43,79 @@ struct HomeViewModelTests {
         #expect(viewModel.state == .results)
         #expect(viewModel.searchResults.map(\.id) == ["song-1", "song-2"])
         #expect(repository.searchRequests.map(\.term) == ["daft punk"])
+        #expect(repository.searchRequests.map(\.policy) == [.cacheFirst])
+    }
+
+    @Test func refreshActiveSearchReloadsFirstPageWithNetworkPolicy() async {
+        let repository = HomeRepositoryFake()
+        repository.pages[0] = PagedResult(
+            items: [sampleHomeSong(id: "old-song")],
+            page: PageRequest(limit: 25, offset: 0),
+            nextPage: PageRequest(limit: 25, offset: 25)
+        )
+        let viewModel = HomeViewModel(repository: repository)
+        await viewModel.search(term: "daft punk")
+
+        repository.pages[0] = PagedResult(
+            items: [sampleHomeSong(id: "new-song")],
+            page: PageRequest(limit: 25, offset: 0),
+            nextPage: nil
+        )
+        await viewModel.refresh()
+
+        #expect(viewModel.state == .results)
+        #expect(viewModel.searchResults.map(\.id) == ["new-song"])
+        #expect(viewModel.refreshErrorMessage == nil)
+        #expect(repository.searchRequests.map(\.page.offset) == [0, 0])
+        #expect(repository.searchRequests.map(\.policy) == [.cacheFirst, .networkFirst])
+    }
+
+    @Test func refreshFailureKeepsCurrentSearchResultsAndShowsInlineError() async {
+        let repository = HomeRepositoryFake()
+        repository.pages[0] = PagedResult(
+            items: [sampleHomeSong(id: "existing-song")],
+            page: PageRequest(limit: 25, offset: 0),
+            nextPage: PageRequest(limit: 25, offset: 25)
+        )
+        let viewModel = HomeViewModel(repository: repository)
+        await viewModel.search(term: "daft punk")
+
+        repository.searchError = URLError(.networkConnectionLost)
+        await viewModel.refresh()
+
+        #expect(viewModel.state == .results)
+        #expect(viewModel.searchResults.map(\.id) == ["existing-song"])
+        #expect(viewModel.refreshErrorMessage == "No internet connection. Keep listening and try again.")
+        #expect(repository.searchRequests.map(\.page.offset) == [0, 0])
+        #expect(repository.searchRequests.map(\.policy) == [.cacheFirst, .networkFirst])
+    }
+
+    @Test func refreshWithoutActiveSearchReloadsRecentSongs() async {
+        let repository = HomeRepositoryFake(recentSongs: [sampleHomeSong(id: "old-recent")])
+        let viewModel = HomeViewModel(repository: repository)
+        await viewModel.loadRecentSongs()
+
+        repository.recentSongs = [sampleHomeSong(id: "new-recent")]
+        await viewModel.refresh()
+
+        #expect(viewModel.state == .recents)
+        #expect(viewModel.songs.map(\.id) == ["new-recent"])
+        #expect(viewModel.refreshErrorMessage == nil)
+        #expect(repository.recentRequests == [10, 10])
+        #expect(repository.searchRequests.isEmpty)
+    }
+
+    @Test func refreshFailureWithoutActiveSearchKeepsRecentSongsAndShowsInlineError() async {
+        let repository = HomeRepositoryFake(recentSongs: [sampleHomeSong(id: "existing-recent")])
+        let viewModel = HomeViewModel(repository: repository)
+        await viewModel.loadRecentSongs()
+
+        repository.recentSongsError = URLError(.timedOut)
+        await viewModel.refresh()
+
+        #expect(viewModel.state == .recents)
+        #expect(viewModel.songs.map(\.id) == ["existing-recent"])
+        #expect(viewModel.refreshErrorMessage == "No internet connection. Keep listening and try again.")
     }
 
     @Test func albumIDResolvesThroughRepositoryWhenSongHasNoAlbumID() async throws {
@@ -205,6 +278,7 @@ private final class HomeRepositoryFake: HomeSongRepository {
     struct SearchRequest {
         let term: String
         let page: PageRequest
+        let policy: HomeSearchPolicy
     }
 
     var recentSongs: [Song]
@@ -214,6 +288,7 @@ private final class HomeRepositoryFake: HomeSongRepository {
     var resolvedAlbumID: Album.ID = "album"
     private(set) var albumResolutionSongIDs: [Song.ID] = []
     private(set) var searchRequests: [SearchRequest] = []
+    private(set) var recentRequests: [Int] = []
 
     init(recentSongs: [Song] = [], recentSongsError: Error? = nil) {
         self.recentSongs = recentSongs
@@ -221,6 +296,7 @@ private final class HomeRepositoryFake: HomeSongRepository {
     }
 
     func recentSongs(limit: Int) async throws -> [Song] {
+        recentRequests.append(limit)
         if let error = recentSongsError {
             throw error
         }
@@ -228,8 +304,8 @@ private final class HomeRepositoryFake: HomeSongRepository {
         return Array(recentSongs.prefix(limit))
     }
 
-    func searchSongs(term: String, page: PageRequest) async throws -> PagedResult<Song> {
-        searchRequests.append(SearchRequest(term: term, page: page))
+    func searchSongs(term: String, page: PageRequest, policy: HomeSearchPolicy) async throws -> PagedResult<Song> {
+        searchRequests.append(SearchRequest(term: term, page: page, policy: policy))
 
         if let searchError {
             throw searchError

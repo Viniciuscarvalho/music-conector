@@ -69,6 +69,25 @@ struct RepositoryTests {
         #expect(catalog.searchTerms.isEmpty)
     }
 
+    @Test func homeRepositoryNetworkFirstSearchBypassesCachedResults() async throws {
+        let catalog = CatalogServiceSpy()
+        let store = RecentSongsStoreSpy()
+        store.cachedSearchResults = [sampleRepositorySong(id: "cached")]
+        catalog.searchResult = PagedResult(
+            items: [sampleRepositorySong(id: "remote")],
+            page: PageRequest(limit: 25, offset: 0),
+            nextPage: nil
+        )
+        let repository = DefaultHomeSongRepository(catalogService: catalog, recentSongsStore: store)
+
+        let result = try await repository.searchSongs(term: "get lucky", page: PageRequest(), policy: .networkFirst)
+
+        #expect(result.items.map(\.id) == ["remote"])
+        #expect(catalog.searchTerms == ["get lucky"])
+        #expect(store.cachedSearchTerms.isEmpty)
+        #expect(store.viewedSongIDs == ["remote"])
+    }
+
     @Test func homeRepositoryReturnsCachedSearchResultsWhenInitialRemoteSearchIsOffline() async throws {
         let catalog = CatalogServiceSpy()
         let store = RecentSongsStoreSpy()

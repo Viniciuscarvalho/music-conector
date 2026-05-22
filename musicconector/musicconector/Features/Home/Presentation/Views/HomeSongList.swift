@@ -13,8 +13,10 @@ struct HomeSongList: View {
     let selectedSongID: Song.ID?
     let isLoadingNextPage: Bool
     let paginationErrorMessage: String?
+    let refreshErrorMessage: String?
     let onSelectSong: (Song) -> Void
     let onMore: (Song) -> Void
+    let onRefresh: () async -> Void
     let onSongAppeared: (Song) -> Void
 
     var body: some View {
@@ -59,7 +61,19 @@ struct HomeSongList: View {
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.vertical, MCSpacing.medium)
                 }
+
+                if let refreshErrorMessage {
+                    Text(refreshErrorMessage)
+                        .font(MCTypography.songSubtitle)
+                        .foregroundStyle(MCColor.secondaryText)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, MCSpacing.medium)
+                        .accessibilityLabel(refreshErrorMessage)
+                }
             }
+        }
+        .refreshable {
+            await onRefresh()
         }
         .scrollIndicators(.hidden)
         .scrollDismissesKeyboard(.interactively)

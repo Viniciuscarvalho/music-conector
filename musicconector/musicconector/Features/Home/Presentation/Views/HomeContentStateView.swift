@@ -64,8 +64,12 @@ struct HomeContentStateView: View {
                     selectedSongID: selectedSong?.id,
                     isLoadingNextPage: viewModel.isLoadingNextPage,
                     paginationErrorMessage: viewModel.paginationErrorMessage,
+                    refreshErrorMessage: viewModel.refreshErrorMessage,
                     onSelectSong: onSelectSong,
                     onMore: onMoreSong,
+                    onRefresh: {
+                        await viewModel.refresh()
+                    },
                     onSongAppeared: { song in
                         Task {
                             await viewModel.loadNextPageIfNeeded(currentSongID: song.id)
