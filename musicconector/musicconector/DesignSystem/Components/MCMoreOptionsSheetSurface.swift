@@ -20,6 +20,13 @@ struct MCMoreOptionsSheetSurface<Content: View>: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            Capsule()
+                .fill(MCColor.secondaryText.opacity(0.52))
+                .frame(width: 38, height: 4)
+                .padding(.top, 4)
+                .padding(.bottom, MCSpacing.medium)
+                .accessibilityHidden(true)
+
             VStack(spacing: MCSpacing.xSmall) {
                 Text(title)
                     .font(MCTypography.songTitle)
@@ -35,14 +42,11 @@ struct MCMoreOptionsSheetSurface<Content: View>: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.horizontal, MCSpacing.xLarge)
-            .padding(.vertical, MCSpacing.large)
-
-            Divider()
-                .overlay(MCColor.separator)
+            .padding(.bottom, MCSpacing.xLarge)
 
             content
                 .padding(.horizontal, MCSpacing.xLarge)
-                .padding(.vertical, MCSpacing.large)
+                .padding(.bottom, MCSpacing.xLarge)
         }
         .background(MCColor.elevatedSurface, in: RoundedRectangle(cornerRadius: MCRadius.sheet, style: .continuous))
         .accessibilityElement(children: .contain)
