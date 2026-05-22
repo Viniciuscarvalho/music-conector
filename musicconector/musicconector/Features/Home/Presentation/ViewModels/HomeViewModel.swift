@@ -26,6 +26,7 @@ final class HomeViewModel {
     private(set) var searchResults: [Song] = []
     private(set) var isLoadingNextPage = false
     private(set) var paginationErrorMessage: String?
+    private(set) var refreshErrorMessage: String?
 
     private let repository: any HomeSongRepository
     private var currentSearchTerm = ""
@@ -44,6 +45,7 @@ final class HomeViewModel {
     }
 
     func loadRecentSongs(limit: Int = 10) async {
+        refreshErrorMessage = nil
         do {
             recentSongs = try await repository.recentSongs(limit: limit)
             if !isSearchActive {
@@ -61,6 +63,7 @@ final class HomeViewModel {
         let term = rawTerm.trimmingCharacters(in: .whitespacesAndNewlines)
         searchText = rawTerm
         paginationErrorMessage = nil
+        refreshErrorMessage = nil
 
         guard !term.isEmpty else {
             clearSearch()
@@ -72,7 +75,7 @@ final class HomeViewModel {
         state = .loading
 
         do {
-            let result = try await repository.searchSongs(term: term, page: page)
+            let result = try await repository.searchSongs(term: term, page: page, policy: .cacheFirst)
             guard currentSearchTerm == term else { return }
 
             searchResults = result.items
@@ -93,7 +96,36 @@ final class HomeViewModel {
         searchResults = []
         nextPage = nil
         paginationErrorMessage = nil
+        refreshErrorMessage = nil
         state = .recents
+    }
+
+    func refresh(limit: Int = 10) async {
+        refreshErrorMessage = nil
+        paginationErrorMessage = nil
+
+        guard isSearchActive else {
+            await refreshRecentSongs(limit: limit)
+            return
+        }
+
+        let term = currentSearchTerm.isEmpty ? searchText.trimmingCharacters(in: .whitespacesAndNewlines) : currentSearchTerm
+        guard !term.isEmpty else {
+            await refreshRecentSongs(limit: limit)
+            return
+        }
+
+        do {
+            let page = PageRequest()
+            let result = try await repository.searchSongs(term: term, page: page, policy: .networkFirst)
+            guard currentSearchTerm == term else { return }
+
+            searchResults = result.items
+            nextPage = result.nextPage
+            state = result.items.isEmpty ? .empty : .results
+        } catch {
+            refreshErrorMessage = Self.message(forRefreshError: error)
+        }
     }
 
     func loadNextPageIfNeeded(currentSongID: Song.ID?) async {
@@ -111,7 +143,7 @@ final class HomeViewModel {
         defer { isLoadingNextPage = false }
 
         do {
-            let result = try await repository.searchSongs(term: currentSearchTerm, page: nextPage)
+            let result = try await repository.searchSongs(term: currentSearchTerm, page: nextPage, policy: .cacheFirst)
             let existingIDs = Set(searchResults.map(\.id))
             let newSongs = result.items.filter { !existingIDs.contains($0.id) }
             searchResults.append(contentsOf: newSongs)
@@ -133,6 +165,17 @@ final class HomeViewModel {
 
         let thresholdIndex = max(searchResults.startIndex, searchResults.count - 3)
         return currentIndex >= thresholdIndex
+    }
+
+    private func refreshRecentSongs(limit: Int) async {
+        do {
+            recentSongs = try await repository.recentSongs(limit: limit)
+            if !isSearchActive {
+                state = .recents
+            }
+        } catch {
+            refreshErrorMessage = Self.message(forRefreshError: error)
+        }
     }
 
     private static func message(forSearchError error: Error) -> String {
@@ -169,5 +212,21 @@ final class HomeViewModel {
         }
 
         return "Recent songs are unavailable on this device."
+    }
+
+    private static func message(forRefreshError error: Error) -> String {
+        if error.isConnectionUnavailable {
+            return "No internet connection. Keep listening and try again."
+        }
+
+        if case MusicCatalogError.invalidCatalogData = error {
+            return "Some song data could not be refreshed."
+        }
+
+        if error.isAuthorizationUnavailable {
+            return "Apple Music access is unavailable. Check MusicKit permissions and try again."
+        }
+
+        return "Songs could not be refreshed. Try again."
     }
 }

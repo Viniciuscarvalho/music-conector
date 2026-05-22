@@ -56,7 +56,7 @@ private final class UITestHomeSongRepository: HomeSongRepository {
         Array(Self.songs.prefix(limit))
     }
 
-    func searchSongs(term: String, page: PageRequest) async throws -> PagedResult<Song> {
+    func searchSongs(term: String, page: PageRequest, policy: HomeSearchPolicy) async throws -> PagedResult<Song> {
         PagedResult(items: Self.songs, page: page, nextPage: nil)
     }
 
