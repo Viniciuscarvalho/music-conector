@@ -161,11 +161,22 @@ private extension Song {
 
 private extension PlaybackState {
     func displaying(song: Song) -> PlaybackState {
-        PlaybackState(
+        guard currentSong?.id == song.id else {
+            return PlaybackState(
+                authorization: authorization,
+                availability: availability,
+                status: .stopped,
+                currentSong: song,
+                elapsedTime: 0,
+                duration: song.duration
+            )
+        }
+
+        return PlaybackState(
             authorization: authorization,
             availability: availability,
             status: status,
-            currentSong: currentSong ?? song,
+            currentSong: currentSong,
             elapsedTime: elapsedTime,
             duration: duration ?? song.duration
         )

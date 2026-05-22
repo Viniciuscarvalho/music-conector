@@ -49,10 +49,10 @@ struct MoreOptionsSheet: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .padding(.horizontal, MCSpacing.small)
-        .padding(.bottom, MCSpacing.medium)
-        .presentationDetents([.height(albumErrorMessage == nil ? 150 : 194)])
-        .presentationDragIndicator(.visible)
+        .padding(.horizontal, MCSpacing.xSmall)
+        .presentationDetents([.height(albumErrorMessage == nil ? 148 : 196)])
+        .presentationDragIndicator(.hidden)
+        .presentationBackground(.clear)
         .accessibilityIdentifier("more-options-sheet")
     }
 }

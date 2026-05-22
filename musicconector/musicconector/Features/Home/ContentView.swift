@@ -78,6 +78,7 @@ struct ContentView: View {
                         showsBackButton: false,
                         onMoreOptions: openMoreOptions
                     )
+                        .id(selectedSong.id)
                         .transition(.mcContent)
                 case .album(let albumID):
                     AlbumContainerView(albumID: albumID, showsBackButton: false) { track in
@@ -123,6 +124,7 @@ struct ContentView: View {
                     switch route {
                     case .player(let song):
                         PlayerContainerView(song: song, onMoreOptions: openMoreOptions)
+                            .id(song.id)
                             .transition(.mcContent)
                     case .album(let albumID):
                         AlbumContainerView(albumID: albumID) { track in

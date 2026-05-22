@@ -69,6 +69,29 @@ struct PlayerViewModelTests {
         #expect(viewModel.playbackState.currentSong?.id == "selected-song")
     }
 
+    @Test func loadSelectedSongDoesNotDisplayPreviouslyPlayingSong() async {
+        let selectedSong = samplePlayerSong(id: "selected-song", duration: 280)
+        let otherSong = samplePlayerSong(id: "other-song", duration: 240)
+        let repository = PlayerRepositoryFake()
+        repository.state = PlaybackState(
+            authorization: .authorized,
+            availability: .playable,
+            status: .playing,
+            currentSong: otherSong,
+            elapsedTime: 96,
+            duration: otherSong.duration
+        )
+        let viewModel = PlayerViewModel(song: selectedSong, repository: repository)
+
+        await viewModel.load()
+
+        #expect(viewModel.playbackState.currentSong?.id == "selected-song")
+        #expect(viewModel.playbackState.status == .stopped)
+        #expect(viewModel.elapsedTime == 0)
+        #expect(viewModel.duration == selectedSong.duration)
+        #expect(!viewModel.isPlaying)
+    }
+
     @Test func progressUpdatesRefreshElapsedTime() async throws {
         let song = samplePlayerSong()
         let repository = PlayerRepositoryFake()
@@ -264,7 +287,7 @@ private final class PlayerRepositoryFake: PlayerRepository {
 }
 
 @MainActor
-private func samplePlayerSong(id: Song.ID = "get-lucky") -> Song {
+private func samplePlayerSong(id: Song.ID = "get-lucky", duration: TimeInterval = 240) -> Song {
     Song(
         id: id,
         title: "Get Lucky",
@@ -272,6 +295,6 @@ private func samplePlayerSong(id: Song.ID = "get-lucky") -> Song {
         albumTitle: "Random Access Memories",
         albumID: "ram",
         artworkURL: URL(string: "https://example.com/\(id).jpg"),
-        duration: 240
+        duration: duration
     )
 }

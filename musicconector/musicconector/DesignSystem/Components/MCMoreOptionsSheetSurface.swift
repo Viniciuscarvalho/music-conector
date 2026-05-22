@@ -9,8 +9,10 @@ import SwiftUI
 
 private enum MCMoreOptionsSheetLayout {
     static let horizontalPadding: CGFloat = 16
-    static let headerVerticalPadding: CGFloat = 14
-    static let contentVerticalPadding: CGFloat = 12
+    static let headerBottomPadding: CGFloat = 12
+    static let contentBottomPadding: CGFloat = 8
+    static let grabberTopPadding: CGFloat = 4
+    static let grabberBottomPadding: CGFloat = 10
     static let actionSpacing: CGFloat = 10
     static let iconFrame: CGFloat = 24
     static let iconSize: CGFloat = 16
@@ -30,6 +32,13 @@ struct MCMoreOptionsSheetSurface<Content: View>: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            Capsule()
+                .fill(MCColor.secondaryText.opacity(0.52))
+                .frame(width: 38, height: 4)
+                .padding(.top, MCMoreOptionsSheetLayout.grabberTopPadding)
+                .padding(.bottom, MCMoreOptionsSheetLayout.grabberBottomPadding)
+                .accessibilityHidden(true)
+
             VStack(spacing: MCSpacing.xSmall) {
                 Text(title)
                     .font(MCTypography.songTitle)
@@ -45,11 +54,11 @@ struct MCMoreOptionsSheetSurface<Content: View>: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.horizontal, MCMoreOptionsSheetLayout.horizontalPadding)
-            .padding(.vertical, MCMoreOptionsSheetLayout.headerVerticalPadding)
+            .padding(.bottom, MCMoreOptionsSheetLayout.headerBottomPadding)
 
             content
                 .padding(.horizontal, MCMoreOptionsSheetLayout.horizontalPadding)
-                .padding(.vertical, MCMoreOptionsSheetLayout.contentVerticalPadding)
+                .padding(.bottom, MCMoreOptionsSheetLayout.contentBottomPadding)
         }
         .background(MCColor.elevatedSurface, in: RoundedRectangle(cornerRadius: MCRadius.sheet, style: .continuous))
         .accessibilityElement(children: .contain)
