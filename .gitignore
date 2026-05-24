@@ -35,6 +35,7 @@ playground.xcworkspace
 # Local agent and repository guidance
 .claude/
 .codex/
+.agents/
 codex-scaffold/
 AGENTS.md
 CLAUDE.md
@@ -48,8 +49,13 @@ AGENTS.local.md
 .env.*
 *.p8
 *.mobileprovision
+*.provisionprofile
 *.cer
 *.p12
+*.key
+*.pem
+*.certSigningRequest
+*.xcarchive
 
 # CocoaPods
 #
